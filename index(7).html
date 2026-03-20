@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Кинопоиск Smart TV</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Geologica:wght@300;400;500;600&display=swap');
+:root{--bg:#080810;--surface:#111118;--card:#1a1a28;--border:#2a2a3a;--accent:#FF6B35;--accent2:#4ECDC4;--gold:#FFD700;--text:#F0F0F8;--muted:#7070A0;--green:#2ED573;--red:#FF4757;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Geologica',sans-serif;min-height:100vh;overflow-x:hidden;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+.fade-in{animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
+/* TV — Яндекс ТВ стиль */
+.tv-wrap{flex:1;display:flex;background:#1a1a1a;min-height:100vh;}
+
+/* Left sidebar */
+.tv-sidebar{width:72px;background:#111;display:flex;flex-direction:column;align-items:center;padding:20px 0;gap:6px;border-right:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.tv-sb-logo{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#FC3F1D,#FF6E00);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff;font-family:'Unbounded',sans-serif;margin-bottom:10px;}
+.tv-sb-btn{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.4);}
+.tv-sb-btn:hover{background:rgba(255,255,255,.1);color:#fff;}
+.tv-sb-btn.active{background:rgba(255,255,255,.12);color:#fff;}
+.tv-sb-spacer{flex:1;}
+
+/* Main content */
+.tv-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Top bar */
+.tv-topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 32px 14px;flex-shrink:0;}
+.tv-section-title{font-size:1.3rem;font-weight:600;color:#fff;font-family:'Geologica',sans-serif;}
+.tv-clock-sm{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;}
+
+/* Apps grid */
+.tv-apps{padding:0 32px;flex:1;}
+.tv-apps-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
+
+/* App tile */
+.tv-app{border-radius:16px;overflow:hidden;cursor:pointer;transition:all .22s;position:relative;aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.tv-app:hover{transform:scale(1.04);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.tv-app:focus{outline:3px solid #fff;outline-offset:2px;}
+.tv-app.kp-app{background:linear-gradient(135deg,#1a1a1a 0%,#111 100%);border:2px solid rgba(255,107,53,.5);box-shadow:0 0 20px rgba(255,107,53,.2);}
+.tv-app.kp-app:hover{border-color:var(--accent);box-shadow:0 0 40px rgba(255,107,53,.4);}
+.tv-app-logo{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+.tv-app-logo img{max-width:70%;max-height:60%;object-fit:contain;}
+.tv-app-name{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:.68rem;color:rgba(255,255,255,.7);font-family:'Geologica',sans-serif;}
+
+/* KP app special */
+.kp-app-inner{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.kp-app-wordmark{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:900;color:var(--accent);letter-spacing:.5px;}
+.kp-app-sub{font-size:.55rem;color:rgba(255,255,255,.5);font-family:'Geologica',sans-serif;}
+.kp-app-tag{position:absolute;top:8px;right:8px;background:var(--accent);color:#fff;font-size:.45rem;padding:2px 7px;border-radius:20px;font-family:'Unbounded',sans-serif;font-weight:700;}
+
+/* Bottom hint */
+.tv-bottom{padding:12px 32px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,.06);}
+.tv-alice{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border-radius:10px;padding:9px 16px;cursor:pointer;transition:all .2s;}
+.tv-alice:hover{background:rgba(255,255,255,.1);}
+.tv-alice-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+.tv-alice-text{font-size:.72rem;color:rgba(255,255,255,.7);}
+.tv-alice-text strong{color:#fff;display:block;font-size:.76rem;}
+
+/* MODALS */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(5px);}
+.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:34px 44px;text-align:center;max-width:400px;width:90%;animation:popIn .25s ease;}
+.modal-card h3{font-family:'Unbounded',sans-serif;font-size:.95rem;margin-bottom:10px;}
+.modal-card p{font-size:.8rem;color:var(--muted);line-height:1.7;}
+.modal-card button{margin-top:18px;padding:9px 26px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;}
+
+/* ONBOARDING — FIX: кнопки той же ширины что и пример */
+.ob-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:400;backdrop-filter:blur(5px);}
+.ob-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 44px;text-align:center;max-width:420px;width:90%;animation:popIn .3s ease;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.ob-icon{font-size:2.4rem;margin-bottom:14px;display:block;}
+.ob-title{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;color:var(--text);margin-bottom:10px;}
+.ob-text{font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:14px;}
+.ob-example{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:.82rem;color:var(--text);margin-bottom:14px;font-style:italic;}
+/* FIX: кнопки занимают суммарно ту же ширину что и .ob-example */
+.ob-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ob-try{padding:10px 0;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;}
+.ob-try:hover{background:#ff5520;}
+.ob-skip{padding:10px 0;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:.8rem;cursor:pointer;font-family:'Geologica',sans-serif;}
+.ob-skip:hover{color:var(--text);}
+
+
+/* TV exit button */
+.tv-exit-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);cursor:pointer;transition:all .2s;flex-shrink:0;font-size:1rem;}
+.tv-exit-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);transform:scale(1.05);}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;padding:11px 28px;background:rgba(8,8,16,.98);border-bottom:1px solid var(--border);gap:16px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
+.logo{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:900;color:var(--accent);cursor:pointer;flex-shrink:0;}
+.nav-links{display:flex;gap:2px;flex:1;}
+.nav-link{padding:6px 12px;border-radius:7px;font-size:.74rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .2s;border:none;background:none;font-family:'Geologica',sans-serif;}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,.06);}
+.nav-link.active{color:var(--accent);background:rgba(255,107,53,.1);}
+.search-bar{display:flex;align-items:center;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:7px 12px;gap:7px;width:230px;cursor:text;transition:all .2s;}
+.search-bar:hover{border-color:var(--accent);}
+.search-bar input{background:none;border:none;outline:none;color:var(--text);font-size:.78rem;width:100%;font-family:'Geologica',sans-serif;}
+.search-bar input::placeholder{color:var(--muted);}
+/* FIX: профиль всегда прижат к правому краю */
+.profile-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:6px 12px;cursor:pointer;transition:all .2s;font-size:.75rem;color:var(--text);flex-shrink:0;margin-left:auto;}
+.profile-btn:hover{border-color:var(--accent2);}
+.avatar{width:25px;height:25px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;}
+.back-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.74rem;color:var(--muted);transition:all .2s;margin:14px 28px 0;width:fit-content;}
+.back-btn:hover{color:var(--text);border-color:var(--accent);}
+
+/* HERO */
+.hero{position:relative;height:420px;overflow:hidden;flex-shrink:0;}
+.hero-bg{position:absolute;inset:0;background:url(https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/473b6dea-780e-4aeb-84d9-18b10f5ffcc3/1920x) center/cover no-repeat;}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,8,16,.82) 25%,rgba(8,8,16,.35) 55%,rgba(8,8,16,.05) 100%),linear-gradient(0deg,rgba(8,8,16,1) 0%,rgba(8,8,16,.2) 35%,transparent 65%);}
+.hero-body{position:relative;z-index:2;padding:30px 28px;}
+.hero-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,71,87,.18);border:1px solid var(--red);border-radius:20px;padding:3px 11px;font-size:.64rem;color:var(--red);font-weight:700;margin-bottom:8px;animation:pulse 1.5s infinite;}
+.hero-title{font-family:'Unbounded',sans-serif;font-size:1.9rem;font-weight:900;line-height:1.18;margin-bottom:6px;}
+.hero-meta{font-size:.78rem;color:var(--muted);margin-bottom:14px;}
+.hero-btns{display:flex;gap:9px;}
+.btn-p{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.btn-p:hover{background:#ff5520;transform:scale(1.02);}
+.btn-s{padding:9px 20px;background:rgba(255,255,255,.1);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;}
+.btn-s:hover{background:rgba(255,255,255,.15);}
+
+/* SPORT BANNER */
+.sport-banner{margin:0 28px 6px;background:linear-gradient(90deg,#0d1a2e,#1a0d2e);border:1px solid rgba(255,107,53,.35);border-radius:11px;padding:12px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .25s;}
+.sport-banner:hover{border-color:var(--accent);transform:translateY(-1px);}
+.live-badge{background:var(--red);color:#fff;font-size:.58rem;padding:3px 9px;border-radius:20px;font-weight:700;font-family:'Unbounded',sans-serif;animation:pulse 1.5s infinite;flex-shrink:0;}
+.banner-btn{margin-left:auto;padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;flex-shrink:0;transition:all .2s;}
+.banner-btn:hover{background:#ff5520;}
+
+/* CATEGORIES */
+.cats{padding:10px 28px 6px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap;}
+.cats::-webkit-scrollbar{display:none;}
+.cat{padding:6px 14px;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--muted);transition:all .2s;white-space:nowrap;font-family:'Geologica',sans-serif;}
+.cat:hover{border-color:var(--accent);color:var(--text);}
+.cat.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* SECTION */
+.section{padding:14px 28px;overflow:visible;} #genreContent{overflow:visible;}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-family:'Unbounded',sans-serif;font-size:.84rem;font-weight:700;}
+.see-all{font-size:.7rem;color:var(--accent);cursor:pointer;}
+
+/* FIX: cards-row с overflow:visible и padding чтобы рамка не обрезалась сверху и по бокам */
+.cards-row{display:flex;gap:12px;overflow-x:auto;overflow-y:visible;scrollbar-width:none;padding:10px 8px 12px 8px;}
+.cards-row::-webkit-scrollbar{display:none;}
+.movie-card{flex:0 0 140px;background:var(--card);border-radius:10px;overflow:visible;cursor:pointer;transition:all .25s;border:2px solid transparent;position:relative;flex-shrink:0;}
+.movie-card:hover{border-color:var(--accent);transform:scale(1.05) translateY(-3px);box-shadow:0 12px 32px rgba(255,107,53,.25);z-index:10;}
+.card-poster{aspect-ratio:2/3;width:100%;object-fit:cover;display:block;border-radius:8px 8px 0 0;}
+.card-poster-ph{aspect-ratio:2/3;width:100%;display:flex;align-items:center;justify-content:center;font-size:2.6rem;border-radius:8px 8px 0 0;overflow:hidden;}
+.card-prog-wrap{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.14);}
+.card-prog-fill{height:100%;background:var(--accent);}
+.card-info{padding:8px 10px;}
+.card-title{font-size:.74rem;font-weight:600;line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-meta{font-size:.6rem;color:var(--muted);}
+.card-rating{font-size:.65rem;color:var(--gold);font-weight:700;margin-top:2px;}
+/* POSTER STYLED — красивый постер с градиентом и названием */
+.card-poster-styled{
+  aspect-ratio:2/3;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border-radius:8px 8px 0 0;
+  position:relative;
+  overflow:hidden;
+}
+.card-poster-styled::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.55) 0%,transparent 60%);
+}
+.cps-icon{
+  font-size:2.8rem;
+  line-height:1;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.5));
+  z-index:1;
+}
+.cps-title{
+  font-size:.62rem;
+  font-weight:700;
+  font-family:'Geologica',sans-serif;
+  color:rgba(255,255,255,.9);
+  text-align:center;
+  padding:0 8px;
+  line-height:1.3;
+  z-index:1;
+  text-shadow:0 1px 4px rgba(0,0,0,.8);
+  word-break:break-word;
+}
+/* Rec cards poster */
+.rec-poster-styled{
+  height:105px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border-radius:0;
+  position:relative;
+  overflow:hidden;
+}
+.rec-poster-styled .cps-icon{font-size:2rem;}
+.rec-poster-styled .cps-title{font-size:.55rem;}
+/* History poster */
+.hist-poster-styled{
+  width:40px;
+  height:60px;
+  border-radius:6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  flex-shrink:0;
+  overflow:hidden;
+}
+.hist-poster-styled .cps-icon{font-size:1.1rem;}
+.hist-poster-styled .cps-title{font-size:.38rem;padding:0 3px;}
+
+
+/* FILM PAGE */
+.film-hero{position:relative;height:360px;overflow:hidden;flex-shrink:0;}
+.film-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(20px) brightness(.35);transform:scale(1.1);}
+.film-hero-grad{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,8,16,.98) 40%,transparent 75%),linear-gradient(0deg,rgba(8,8,16,1) 0%,transparent 35%);}
+.film-hero-content{position:relative;z-index:2;display:flex;gap:24px;padding:24px 28px;height:100%;align-items:flex-end;}
+.film-poster{width:150px;flex-shrink:0;border-radius:10px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.6);}
+.film-poster img{width:100%;display:block;}
+.film-poster-ph{width:150px;aspect-ratio:2/3;border-radius:10px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:3rem;flex-shrink:0;}
+.film-details{flex:1;}
+.film-title{font-family:'Unbounded',sans-serif;font-size:1.7rem;font-weight:900;line-height:1.15;margin-bottom:6px;}
+.film-meta-row{display:flex;gap:10px;align-items:center;margin-bottom:7px;flex-wrap:wrap;}
+.film-tag{padding:3px 10px;border-radius:20px;font-size:.63rem;font-weight:600;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.film-rating-badge{background:rgba(255,215,0,.15);border:1px solid var(--gold);color:var(--gold);padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.film-desc{font-size:.8rem;color:rgba(240,240,248,.8);line-height:1.7;max-width:540px;margin-bottom:13px;}
+.film-btns{display:flex;gap:10px;}
+.film-tabs{display:flex;gap:0;padding:0 28px;border-bottom:1px solid var(--border);}
+.film-tab{padding:12px 20px;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;font-family:'Geologica',sans-serif;}
+.film-tab:hover{color:var(--text);}
+.film-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.film-tab-content{display:none;padding:18px 28px;flex:1;}
+.film-tab-content.active{display:block;animation:fadeIn .2s ease;}
+.actors-grid{display:flex;gap:14px;flex-wrap:wrap;}
+.actor-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:78px;}
+.actor-avatar{width:58px;height:58px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;}
+.actor-avatar img{width:100%;height:100%;object-fit:cover;}
+.actor-name{font-size:.6rem;text-align:center;line-height:1.3;}
+.actor-role{font-size:.55rem;color:var(--muted);text-align:center;}
+.reviews-list{display:flex;flex-direction:column;gap:12px;margin-bottom:18px;}
+.review-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px 16px;}
+.review-header{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.review-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;}
+.review-name{font-size:.78rem;font-weight:600;}
+.review-date{font-size:.63rem;color:var(--muted);margin-left:auto;}
+.review-stars{color:var(--gold);font-size:.72rem;margin-bottom:5px;}
+.review-text{font-size:.76rem;color:rgba(240,240,248,.85);line-height:1.6;}
+.write-review{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px 16px;}
+.write-review h4{font-size:.8rem;font-weight:600;margin-bottom:9px;}
+.review-star-row{display:flex;gap:3px;margin-bottom:9px;}
+.review-star{font-size:1.2rem;cursor:pointer;transition:transform .15s;filter:grayscale(1);}
+.review-star.on{filter:none;}
+.review-textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:.78rem;font-family:'Geologica',sans-serif;resize:vertical;min-height:76px;outline:none;transition:all .2s;}
+.review-textarea:focus{border-color:var(--accent);}
+.review-submit{margin-top:9px;padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;}
+.review-submit:hover{background:#ff5520;}
+
+/* RATING MODAL */
+.rating-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:600;backdrop-filter:blur(6px);}
+.rating-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:36px 46px;text-align:center;max-width:440px;width:90%;animation:popIn .3s ease;}
+.rating-poster-wrap{width:76px;margin:0 auto 13px;border-radius:8px;overflow:hidden;}
+.rating-poster-wrap img{width:100%;display:block;}
+.rating-title-h{font-family:'Unbounded',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:5px;}
+.rating-sub{font-size:.76rem;color:var(--muted);margin-bottom:18px;}
+.stars-row{display:flex;gap:5px;justify-content:center;margin-bottom:7px;}
+.star-btn{font-size:1.9rem;cursor:pointer;transition:transform .15s;filter:grayscale(1);line-height:1;}
+.star-btn.lit{filter:none;}
+.star-btn:hover{transform:scale(1.3);}
+.rating-num{font-family:'Unbounded',sans-serif;font-size:1.7rem;font-weight:900;color:var(--gold);margin-bottom:4px;min-height:38px;}
+.rating-label{font-size:.73rem;color:var(--muted);margin-bottom:20px;min-height:17px;}
+.rating-confirm{padding:10px 30px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:.83rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;margin-right:9px;}
+.rating-confirm:hover{background:#ff5520;}
+.rating-skip{padding:10px 18px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:9px;font-size:.83rem;cursor:pointer;font-family:'Geologica',sans-serif;}
+
+/* QUALITY MODAL */
+.quality-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:600;backdrop-filter:blur(5px);}
+.quality-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 36px;min-width:280px;animation:popIn .25s ease;}
+.quality-title{font-family:'Unbounded',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:16px;}
+.quality-option{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:all .2s;font-size:.82rem;margin-bottom:6px;}
+.quality-option:hover{background:rgba(255,255,255,.06);}
+.quality-option.active{background:rgba(255,107,53,.12);color:var(--accent);}
+.quality-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;}
+.quality-option.active .quality-dot{background:var(--accent);border-color:var(--accent);}
+
+/* VOLUME SLIDER */
+.volume-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:600;backdrop-filter:blur(5px);}
+.volume-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 36px;min-width:320px;animation:popIn .25s ease;}
+.volume-title{font-family:'Unbounded',sans-serif;font-size:.88rem;font-weight:700;margin-bottom:18px;text-align:center;}
+.volume-slider-wrap{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.volume-icon{font-size:1.2rem;flex-shrink:0;}
+.volume-slider{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none;cursor:pointer;}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;}
+.volume-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
+.volume-val{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:700;color:var(--accent);min-width:36px;text-align:right;}
+.volume-close{width:100%;padding:9px;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.8rem;cursor:pointer;font-family:'Geologica',sans-serif;margin-top:4px;}
+
+/* CATALOG / SEARCH */
+.catalog-wrap{flex:1;padding:0 28px 28px;}
+.catalog-filters{padding:14px 0 10px;display:flex;gap:7px;flex-wrap:wrap;}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:18px;padding:4px;}
+.search-wrap{flex:1;padding:0 28px 28px;}
+.search-big{display:flex;align-items:center;background:rgba(255,255,255,.05);border:2px solid var(--accent);border-radius:12px;padding:12px 16px;gap:11px;margin:22px 0 12px;}
+.search-big input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:1rem;font-family:'Geologica',sans-serif;}
+.search-big input::placeholder{color:var(--muted);}
+.voice-big{background:var(--accent);border:none;border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.voice-big:hover{background:#ff5520;transform:scale(1.05);}
+.voice-big.listening{background:var(--red);animation:pulse .8s infinite;}
+.fchips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;}
+.fchip{padding:6px 14px;border-radius:20px;font-size:.72rem;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .2s;font-family:'Geologica',sans-serif;}
+.fchip:hover,.fchip.active{border-color:var(--accent);color:var(--accent);background:rgba(255,107,53,.1);}
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;padding:4px;}
+
+/* PROFILE */
+.profile-wrap{flex:1;padding:20px 28px;max-width:780px;margin:0 auto;width:100%;}
+.profile-hd{display:flex;align-items:center;gap:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;margin-bottom:18px;}
+.av-lg{width:66px;height:66px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;flex-shrink:0;}
+.pname{font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:700;}
+.pemail{font-size:.75rem;color:var(--muted);margin-top:3px;}
+.plan-badge{margin-left:auto;background:linear-gradient(135deg,rgba(255,107,53,.14),rgba(255,107,53,.04));border:1px solid var(--accent);border-radius:9px;padding:9px 16px;text-align:center;}
+.plan-badge .pn{font-family:'Unbounded',sans-serif;font-size:.68rem;color:var(--accent);font-weight:700;}
+.plan-badge .pd{font-size:.6rem;color:var(--muted);margin-top:3px;}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ptile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;cursor:pointer;transition:all .2s;}
+.ptile:hover{border-color:var(--accent2);}
+.ptile-ic{font-size:1.3rem;margin-bottom:7px;}
+.ptile-t{font-size:.84rem;font-weight:600;margin-bottom:2px;}
+.ptile-d{font-size:.66rem;color:var(--muted);}
+.logout{width:100%;margin-top:12px;padding:11px;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);border-radius:9px;color:var(--red);font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;}
+.logout:hover{background:rgba(255,71,87,.18);}
+
+/* SUBPAGES */
+.subpage-wrap{flex:1;padding:20px 28px;max-width:900px;margin:0 auto;width:100%;}
+.subpage-title{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;margin-bottom:18px;}
+.history-list{display:flex;flex-direction:column;gap:10px;}
+.history-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 16px;cursor:pointer;transition:all .2s;}
+.history-item:hover{border-color:var(--accent);}
+.history-poster{width:40px;height:60px;border-radius:6px;object-fit:cover;flex-shrink:0;}
+.history-poster-ph{width:40px;height:60px;border-radius:6px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.history-info{flex:1;}
+.history-title{font-size:.82rem;font-weight:600;margin-bottom:3px;}
+.history-meta{font-size:.68rem;color:var(--muted);}
+.history-prog{margin-top:6px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;}
+.history-prog-fill{height:100%;background:var(--accent);border-radius:2px;}
+
+/* SETTINGS */
+.settings-list{display:flex;flex-direction:column;gap:10px;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 18px;}
+.settings-label{font-size:.82rem;font-weight:500;}
+.settings-val{font-size:.76rem;color:var(--muted);}
+.toggle{width:42px;height:24px;background:var(--border);border-radius:12px;position:relative;cursor:pointer;transition:background .2s;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;}
+.toggle.on::after{left:21px;}
+.settings-btn{padding:6px 14px;background:rgba(255,107,53,.12);border:1px solid var(--accent);border-radius:7px;color:var(--accent);font-size:.74rem;font-weight:600;cursor:pointer;font-family:'Geologica',sans-serif;transition:all .2s;}
+.settings-btn:hover{background:rgba(255,107,53,.2);}
+
+/* LANG SELECT */
+.lang-select{background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.76rem;padding:6px 12px;cursor:pointer;outline:none;font-family:'Geologica',sans-serif;}
+.lang-select:focus{border-color:var(--accent);}
+
+/* PLAYER */
+.player-video{flex:1;background:linear-gradient(135deg,#0d1a0d,#1a0d1a,#0d0d1a);display:flex;align-items:center;justify-content:center;position:relative;min-height:440px;}
+.play-center{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;border:2px solid rgba(255,255,255,.2);}
+.play-center:hover{background:rgba(255,255,255,.2);transform:scale(1.08);}
+.play-center svg{width:24px;height:24px;fill:#fff;margin-left:3px;}
+.player-title-o{position:absolute;top:20px;left:28px;font-family:'Unbounded',sans-serif;font-size:1.3rem;font-weight:900;text-shadow:0 2px 16px rgba(0,0,0,.8);}
+.player-ctrl{background:linear-gradient(transparent,rgba(0,0,0,.97));padding:22px 28px;}
+.prog-track{width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin-bottom:14px;cursor:pointer;position:relative;}
+.prog-fill{height:100%;width:35%;background:var(--accent);border-radius:2px;position:relative;}
+.prog-dot{width:13px;height:13px;background:#fff;border-radius:50%;position:absolute;right:-6.5px;top:-4.5px;}
+.ctrl-row{display:flex;align-items:center;gap:6px;}
+.ctrl-btn{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.ctrl-btn:hover{background:rgba(255,255,255,.16);}
+.ctrl-btn.big{width:44px;height:44px;border-radius:10px;background:var(--accent);border-color:var(--accent);}
+.ctrl-btn.big:hover{background:#ff5520;}
+.ctrl-btn svg{width:16px;height:16px;fill:#fff;}
+.ctrl-btn.big svg{width:20px;height:20px;}
+.time-d{font-size:.76rem;color:var(--muted);white-space:nowrap;margin:0 6px;}
+.spacer{flex:1;}
+.next-btn{padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;animation:pulse 2s infinite;flex-shrink:0;}
+
+/* RECS */
+.recs-wrap{flex:1;padding:18px 28px;}
+.watched-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(46,213,115,.1);border:1px solid var(--green);border-radius:9px;padding:9px 16px;font-size:.77rem;color:var(--green);margin-bottom:18px;}
+.rec-sec{margin-bottom:24px;}
+.rec-sec h3{font-family:'Unbounded',sans-serif;font-size:.74rem;color:var(--muted);margin-bottom:12px;letter-spacing:.05em;text-transform:uppercase;}
+.rec-row{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:4px;}
+.rec-row::-webkit-scrollbar{display:none;}
+.rec-card{flex:0 0 180px;background:var(--card);border-radius:11px;overflow:hidden;cursor:pointer;transition:all .25s;border:2px solid transparent;}
+.rec-card:hover{border-color:var(--accent);transform:scale(1.03);}
+.rec-poster-img{width:100%;height:105px;object-fit:cover;display:block;}
+.rec-poster-ph{height:105px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;}
+.rec-info{padding:9px 11px;}
+.rec-title{font-size:.76rem;font-weight:600;}
+.rec-meta{font-size:.6rem;color:var(--muted);margin-top:3px;}
+.rec-match{font-size:.6rem;color:var(--green);font-weight:600;margin-top:3px;}
+
+/* LOGIN */
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:36px;background:radial-gradient(ellipse at center,#1a1a2e 0%,var(--bg) 70%);}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:38px 46px;width:100%;max-width:400px;}
+.login-logo{font-family:'Unbounded',sans-serif;font-size:1.6rem;font-weight:900;color:var(--accent);text-align:center;margin-bottom:7px;}
+.login-sub{text-align:center;font-size:.76rem;color:var(--muted);margin-bottom:24px;}
+.form-g{margin-bottom:12px;}
+.form-l{font-size:.7rem;color:var(--muted);margin-bottom:5px;display:block;}
+.form-i{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-size:.85rem;outline:none;transition:all .2s;font-family:'Geologica',sans-serif;}
+.form-i:focus{border-color:var(--accent);}
+.login-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:'Geologica',sans-serif;margin-top:7px;}
+.divider{text-align:center;color:var(--muted);font-size:.68rem;margin:12px 0;}
+.social-btn{width:100%;padding:9px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.77rem;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .2s;font-family:'Geologica',sans-serif;}
+.social-btn:hover{border-color:var(--accent2);}
+.login-sw{text-align:center;font-size:.72rem;color:var(--muted);margin-top:14px;}
+.login-sw span{color:var(--accent);cursor:pointer;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:11px 16px;font-size:.77rem;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:700;opacity:0;transform:translateY(11px);transition:all .28s;display:flex;align-items:center;gap:9px;max-width:260px;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* Color presets for placeholders */
+.c1{background:linear-gradient(135deg,#1a2a1a,#0d1a0d)}
+.c2{background:linear-gradient(135deg,#1a1a2a,#0d0d1a)}
+.c3{background:linear-gradient(135deg,#2a1a1a,#1a0d0d)}
+.c4{background:linear-gradient(135deg,#2a2a1a,#1a1a0d)}
+.c5{background:linear-gradient(135deg,#1a2a2a,#0d1a1a)}
+.c6{background:linear-gradient(135deg,#2a1a2a,#1a0d1a)}
+.c7{background:linear-gradient(135deg,#1e1a2a,#140d1a)}
+.c8{background:linear-gradient(135deg,#2a1e1a,#1a120d)}
+</style>
+</head>
+<body>
+
+<!-- TV SCREEN — Яндекс ТВ стиль -->
+<div class="screen active" id="s-tv">
+  <div class="tv-wrap">
+
+    <!-- Sidebar -->
+    <div class="tv-sidebar">
+      <div class="tv-sb-logo">Я</div>
+      <div class="tv-sb-btn active" title="Главная">🏠</div>
+      <div class="tv-sb-btn" title="Поиск" onclick="showUnavail('Поиск')">🔍</div>
+      <div class="tv-sb-btn" title="ТВ" onclick="showUnavail('Телеканалы')">📺</div>
+      <div class="tv-sb-btn" title="Записи" onclick="showUnavail('Записи')">📁</div>
+      <div class="tv-sb-btn" title="Настройки" onclick="showUnavail('Настройки')">⚙️</div>
+      <div class="tv-sb-spacer"></div>
+      <div class="tv-sb-btn" title="Профиль" style="background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:.7rem;font-weight:700;">ЯА</div>
+    </div>
+
+    <!-- Main -->
+    <div class="tv-main">
+      <div class="tv-topbar">
+        <div class="tv-section-title">сервисы</div>
+        <div class="tv-clock-sm" id="tvClock">20:47</div>
+      </div>
+
+      <div class="tv-apps">
+        <!-- Row 1 -->
+        <div class="tv-apps-row">
+
+          <!-- Кинопоиск — главный, первый -->
+          <div class="tv-app kp-app" onclick="go('s-home')">
+            <div class="tv-app-logo">
+              <div class="kp-app-inner">
+                <div style="font-size:1.5rem;margin-bottom:3px">🎬</div>
+                <div class="kp-app-wordmark">КИНОПОИСК</div>
+                <div class="kp-app-sub">Яндекс Плюс</div>
+              </div>
+            </div>
+            <div class="kp-app-tag">▶ СМОТРЕТЬ</div>
+          </div>
+
+          <!-- YouTube -->
+          <div class="tv-app" style="background:#fff;" onclick="showUnavail('YouTube')">
+            <div class="tv-app-logo" style="flex-direction:column;gap:6px;">
+              <div style="width:44px;height:44px;background:#FF0000;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <div style="width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:16px solid #fff;margin-left:3px;"></div>
+              </div>
+              <div style="font-size:.72rem;font-weight:700;color:#000;">YouTube</div>
+            </div>
+          </div>
+
+          <!-- Okko -->
+          <div class="tv-app" style="background:linear-gradient(135deg,#0f1b2d,#1a2d47);" onclick="showUnavail('Okko')">
+            <div class="tv-app-logo">
+              <div style="font-family:'Unbounded',sans-serif;font-size:1.6rem;font-weight:900;color:#fff;letter-spacing:-1px;">okko</div>
+            </div>
+            <div class="tv-app-name">Okko: кино, сериалы, спорт</div>
+          </div>
+
+          <!-- Premier -->
+          <div class="tv-app" style="background:#FFD600;" onclick="showUnavail('Premier')">
+            <div class="tv-app-logo" style="flex-direction:row;gap:7px;">
+              <div style="width:0;height:0;border-top:11px solid transparent;border-bottom:11px solid transparent;border-left:18px solid #222;"></div>
+              <div style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:900;color:#222;">PREMIER</div>
+            </div>
+            <div class="tv-app-name" style="color:rgba(0,0,0,.5);">Сериалы, фильмы, ТВ</div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="tv-apps-row">
+
+          <!-- IVI -->
+          <div class="tv-app" style="background:linear-gradient(135deg,#1a0000,#4a0000);" onclick="showUnavail('IVI')">
+            <div class="tv-app-logo">
+              <div style="font-family:'Unbounded',sans-serif;font-size:1.8rem;font-weight:900;color:#E8001C;letter-spacing:-1px;">иви</div>
+            </div>
+          </div>
+
+          <!-- Start -->
+          <div class="tv-app" style="background:#111;" onclick="showUnavail('Start')">
+            <div class="tv-app-logo">
+              <div style="font-family:'Unbounded',sans-serif;font-size:1.6rem;font-weight:900;color:#E8001C;">START</div>
+            </div>
+            <div class="tv-app-name">Фильмы, сериалы, мультики</div>
+          </div>
+
+          <!-- VK Видео -->
+          <div class="tv-app" style="background:linear-gradient(135deg,#0d2137,#1a3a5c);" onclick="showUnavail('VK Видео')">
+            <div class="tv-app-logo" style="flex-direction:row;gap:8px;">
+              <div style="width:32px;height:32px;background:#2787F5;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <div style="width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:13px solid #fff;margin-left:2px;"></div>
+              </div>
+              <div style="font-size:.9rem;font-weight:700;color:#fff;">VK Видео</div>
+            </div>
+          </div>
+
+          <!-- Смотрёшка -->
+          <div class="tv-app" style="background:linear-gradient(135deg,#0a1628,#162444);" onclick="showUnavail('Смотрёшка')">
+            <div class="tv-app-logo">
+              <div style="font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:900;color:#fff;text-align:center;line-height:1.3;">СМОТРЁШКА</div>
+            </div>
+            <div class="tv-app-name" style="color:rgba(255,255,255,.4);font-size:.58rem;">Яндекс</div>
+          </div>
+        </div>
+
+        <!-- Row 3 — спорт и доп -->
+        <div class="tv-apps-row">
+          <div class="tv-app" style="background:linear-gradient(135deg,#001a00,#004400);" onclick="showUnavail('Матч ТВ')">
+            <div class="tv-app-logo"><div style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:900;color:#00cc44;text-align:center;">МАТЧ<br>ТВ</div></div>
+          </div>
+          <div class="tv-app" style="background:linear-gradient(135deg,#1a0d00,#3d2000);" onclick="showUnavail('Amediateka')">
+            <div class="tv-app-logo"><div style="font-size:.75rem;font-weight:700;color:#fff;text-align:center;font-family:'Unbounded',sans-serif;line-height:1.4;">AME<br>DIATEKA</div></div>
+          </div>
+          <div class="tv-app" style="background:#1a1a2e;" onclick="showUnavail('24ТВ')">
+            <div class="tv-app-logo" style="flex-direction:row;gap:5px;">
+              <div style="width:22px;height:22px;background:#2787F5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:700;color:#fff;">▶</div>
+              <div style="font-weight:700;color:#fff;font-size:.9rem;">24ТВ</div>
+            </div>
+          </div>
+          <div class="tv-app" style="background:linear-gradient(135deg,#001428,#002a50);" onclick="showUnavail('AllPlay')">
+            <div class="tv-app-logo"><div style="font-size:.85rem;font-weight:700;color:#fff;font-family:'Unbounded',sans-serif;">allplay</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom: Алиса + баннер -->
+      <div class="tv-bottom">
+        <div class="tv-alice" onclick="showUnavail('Алиса')">
+          <div class="tv-alice-icon">🎙</div>
+          <div class="tv-alice-text">
+            <strong>Алиса, включи Кинопоиск</strong>
+            Запущу приложение без пульта
+          </div>
+        </div>
+        <div style="font-size:.65rem;color:rgba(255,255,255,.2);">YaOS Smart TV · Яндекс</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UNAVAIL -->
+<div class="modal-bg" id="unavailModal" style="display:none;" onclick="hideUnavail()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <h3 id="unavailTitle">Приложение недоступно</h3>
+    <p id="unavailTxt">Только Кинопоиск доступен в этом прототипе.</p>
+    <button onclick="hideUnavail()" id="unavailBtn">Понятно</button>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="ob-wrap" id="onboarding" style="display:none;">
+  <div class="ob-card">
+    <span class="ob-icon">🎙</span>
+    <div class="ob-title" id="obTitle">Голосовой поиск</div>
+    <div class="ob-text" id="obText">Нажми кнопку с микрофоном в строке поиска и скажи что ищешь — набирать по буквам не нужно.</div>
+    <div class="ob-example" id="obExample">«Найди комедию» · «Включи сериал про войну»</div>
+    <div class="ob-btns">
+      <button class="ob-try" id="obTryBtn" onclick="closeOB(true)">Попробовать →</button>
+      <button class="ob-skip" id="obSkipBtn" onclick="closeOB(false)">Пропустить</button>
+    </div>
+  </div>
+</div>
+
+<!-- RATING MODAL -->
+<div class="rating-modal" id="ratingModal" style="display:none;">
+  <div class="rating-card">
+    <div id="ratingPosterWrap"></div>
+    <div class="rating-title-h" id="ratingQ">Как вам фильм?</div>
+    <div class="rating-sub" id="ratingFilmName">Мастер и Маргарита</div>
+    <div class="stars-row" id="starsRow"></div>
+    <div class="rating-num" id="ratingNum">—</div>
+    <div class="rating-label" id="ratingLabel">Выберите оценку</div>
+    <div>
+      <button class="rating-confirm" id="ratingConfirmBtn" onclick="confirmRating()">Оценить</button>
+      <button class="rating-skip" id="ratingSkipBtn" onclick="closeRating()">Пропустить</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUALITY MODAL -->
+<div class="quality-modal" id="qualityModal" style="display:none;" onclick="closeQualityModal()">
+  <div class="quality-card" onclick="event.stopPropagation()">
+    <div class="quality-title" id="qualityTitle">Качество видео</div>
+    <div id="qualityOptions"></div>
+    <button class="volume-close" onclick="closeQualityModal()" id="qualityClose">Закрыть</button>
+  </div>
+</div>
+
+<!-- VOLUME MODAL -->
+<div class="volume-modal" id="volumeModal" style="display:none;" onclick="closeVolumeModal()">
+  <div class="volume-card" onclick="event.stopPropagation()">
+    <div class="volume-title" id="volTitle">Громкость</div>
+    <div class="volume-slider-wrap">
+      <span class="volume-icon" id="volIconLow">🔈</span>
+      <input type="range" min="0" max="100" value="60" class="volume-slider" id="volSlider" oninput="updateVol(this.value)">
+      <span class="volume-icon" id="volIconHigh">🔊</span>
+      <span class="volume-val" id="volVal">60%</span>
+    </div>
+    <button class="volume-close" onclick="closeVolumeModal()" id="volClose">OK</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="screen" id="s-home">
+  <div class="topbar">
+    <div class="tv-exit-btn" onclick="go('s-tv')" title="Выйти на главный экран">
+      <span>📺</span>
+    </div>
+    <div class="logo" id="logoHome" onclick="go('s-home')">Кинопоиск</div>
+    <div class="nav-links">
+      <button class="nav-link active" id="nl-home" onclick="go('s-home')" data-i18n="nav_home">Главная</button>
+      <button class="nav-link" onclick="go('s-catalog')" data-i18n="nav_catalog">Каталог</button>
+      <button class="nav-link" onclick="goGenre('Сериалы')" data-i18n="nav_series">Сериалы</button>
+      <button class="nav-link" onclick="goGenre('Детям')" data-i18n="nav_kids">Детям</button>
+      <button class="nav-link" onclick="goGenre('Спорт')" data-i18n="nav_sport">Спорт</button>
+      <button class="nav-link" onclick="go('s-search')" data-i18n="nav_search">Поиск</button>
+    </div>
+    <div class="search-bar" onclick="go('s-search')"><span>🔍</span><input placeholder="Найти фильм..." id="homeSearchPh" readonly><span style="font-size:.95rem;cursor:pointer;color:var(--muted);" onclick="event.stopPropagation();go('s-search')">🎙</span></div>
+    <div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div>
+  </div>
+  <div class="hero">
+    <div class="hero-bg"></div><div class="hero-grad"></div>
+    <div class="hero-body">
+      <div class="hero-badge" data-i18n="new_week">● НОВИНКА НЕДЕЛИ</div>
+      <div class="hero-title" id="heroTitle">Мастер и Маргарита</div>
+      <div class="hero-meta" id="heroMeta">2024 · Драма · 2ч 1м · ★ 8.2</div>
+      <div class="hero-btns">
+        <button class="btn-p" onclick="go('s-player')" data-i18n="watch">▶ Смотреть</button>
+        <button class="btn-s" onclick="openFilm('master')" data-i18n="details">ℹ Подробнее</button>
+      </div>
+    </div>
+  </div>
+  <div class="sport-banner" onclick="openSportLive('cskasp','⚽ ЦСКА — Спартак · Финал Кубка России')">
+    <div class="live-badge">● LIVE</div>
+    <div><div style="font-size:.93rem;font-weight:700;" id="homeBannerTitle">⚽ ЦСКА — Спартак · Финал Кубка России</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px;" id="homeBannerSub">Прямая трансляция · 2-й тайм · 1:0</div></div>
+    <button class="banner-btn" onclick="event.stopPropagation();openSportLive('cskasp','⚽ ЦСКА — Спартак · Финал Кубка России')" data-i18n="watch_btn">Смотреть →</button>
+  </div>
+  <div class="cats" id="homeCats"></div>
+  <div id="genreContent"></div>
+  <div class="section">
+    <div class="sec-header"><div class="sec-title" data-i18n="continue_watching">Продолжить просмотр</div><div class="see-all" onclick="go('s-history')" data-i18n="all">Все →</div></div>
+    <div class="cards-row" id="continueRow"></div>
+  </div>
+</div>
+
+<!-- FILM PAGE -->
+<div class="screen" id="s-film">
+  <div class="topbar">
+    <div class="logo" onclick="go('s-home')">Кинопоиск</div>
+    <div class="nav-links"><button class="nav-link" onclick="go('s-home')" data-i18n="nav_home">Главная</button><button class="nav-link" onclick="go('s-catalog')" data-i18n="nav_catalog">Каталог</button></div>
+    <div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div>
+  </div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="film-hero">
+    <div class="film-hero-bg" id="filmHeroBg"></div>
+    <div class="film-hero-grad"></div>
+    <div class="film-hero-content">
+      <div id="filmPosterWrap"></div>
+      <div class="film-details">
+        <div class="film-title" id="filmTitleEl">—</div>
+        <div class="film-meta-row" id="filmMetaRow"></div>
+        <div class="film-desc" id="filmDescEl">—</div>
+        <div class="film-btns">
+          <button class="btn-p" onclick="go('s-player')" data-i18n="watch">▶ Смотреть</button>
+          <button class="btn-s" id="favBtn" onclick="toggleFavFromFilm()" data-i18n="add_fav">+ Избранное</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="film-tabs">
+    <div class="film-tab active" onclick="switchTab('info')" data-i18n="about_film">О фильме</div>
+    <div class="film-tab" onclick="switchTab('actors')" data-i18n="actors">Актёры</div>
+    <div class="film-tab" onclick="switchTab('reviews')" data-i18n="reviews">Отзывы</div>
+  </div>
+  <div class="film-tab-content active" id="tab-info">
+    <div id="filmFullDescEl" style="font-size:.84rem;line-height:1.8;color:rgba(240,240,248,.85);max-width:700px;margin-bottom:18px;"></div>
+    <div id="filmDetailsEl" style="display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:.78rem;max-width:500px;"></div>
+  </div>
+  <div class="film-tab-content" id="tab-actors"><div class="actors-grid" id="actorsGrid"></div></div>
+  <div class="film-tab-content" id="tab-reviews">
+    <div class="reviews-list" id="reviewsList"></div>
+    <div class="write-review">
+      <h4 data-i18n="write_review">Написать отзыв</h4>
+      <div class="review-star-row" id="writeStarRow"></div>
+      <textarea class="review-textarea" id="reviewText" placeholder="Поделитесь впечатлением..."></textarea>
+      <button class="review-submit" onclick="submitReview()" data-i18n="publish">Опубликовать</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATALOG -->
+<div class="screen" id="s-catalog">
+  <div class="topbar">
+    <div class="logo" onclick="go('s-home')">Кинопоиск</div>
+    <div class="nav-links"><button class="nav-link" onclick="go('s-home')" data-i18n="nav_home">Главная</button><button class="nav-link active" data-i18n="nav_catalog">Каталог</button><button class="nav-link" onclick="go('s-search')" data-i18n="nav_search">Поиск</button></div>
+    <div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div>
+  </div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="catalog-wrap fade-in">
+    <div class="catalog-filters" id="catalogFilters"></div>
+    <div class="catalog-grid" id="catalogGrid"></div>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div class="screen" id="s-search">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="nav-links"><button class="nav-link" onclick="go('s-home')" data-i18n="nav_home">Главная</button><button class="nav-link active" data-i18n="nav_search">Поиск</button></div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="search-wrap fade-in">
+    <div class="search-big"><span style="font-size:1.1rem;color:var(--muted)">🔍</span><input id="searchInput" placeholder="Название фильма..." oninput="doSearch(this.value)"><button class="voice-big" id="voiceBtn" onclick="toggleVoice()">🎙</button></div>
+    <div class="fchips" id="searchFchips"></div>
+    <div class="res-grid" id="searchResults"></div>
+  </div>
+</div>
+
+<!-- PLAYER -->
+<div class="screen" id="s-player">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="nav-links"></div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div style="flex:1;display:flex;flex-direction:column;" class="fade-in">
+    <div class="player-video">
+      <div class="play-center" onclick="togglePlay()">
+        <svg id="playIconC" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <div class="player-title-o" id="playerTitle">Мастер и Маргарита</div>
+    </div>
+    <div class="player-ctrl">
+      <div class="prog-track" onclick="seekVid(event)"><div class="prog-fill" id="progBar"><div class="prog-dot"></div></div></div>
+      <div class="ctrl-row">
+        <div class="ctrl-btn" onclick="showToast('⏮')"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></div>
+        <div class="ctrl-btn" onclick="showToast('−10s')"><svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6 8.5 6V6l-8.5 6z"/></svg></div>
+        <div class="ctrl-btn big" id="playBtnCtrl" onclick="togglePlay()"><svg id="playIconCtrl" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></div>
+        <div class="ctrl-btn" onclick="showToast('+10s')"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6L13 6zM4 18l8.5-6L4 6v12z"/></svg></div>
+        <div class="ctrl-btn" onclick="showToast('⏭')"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></div>
+        <div class="time-d" id="timeD">42:15 / 2:01:30</div>
+        <div class="spacer"></div>
+        <div class="ctrl-btn" onclick="openVolumeModal()"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></div>
+        <div class="ctrl-btn" onclick="showToast('💬')"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h2v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/></svg></div>
+        <div class="ctrl-btn" onclick="showToast('⛶')"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></div>
+        <button class="next-btn" onclick="showRatingThenNext()" data-i18n="next_btn">Следующий →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RECS -->
+<div class="screen" id="s-recs">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="nav-links"><button class="nav-link" onclick="go('s-home')" data-i18n="nav_home">Главная</button></div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="recs-wrap fade-in">
+    <div class="watched-badge" id="watchedBadge">✓ Просмотрено: Мастер и Маргарита · 2ч 01м</div>
+    <div class="rec-sec"><h3 data-i18n="because_watched">Потому что вы смотрели</h3><div class="rec-row" id="recsRow"></div></div>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn-p" onclick="go('s-home')" data-i18n="to_home">🏠 На главную</button>
+      <button class="btn-s" onclick="go('s-search')" data-i18n="find_more">🔍 Найти ещё</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="screen" id="s-profile">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="nav-links"><button class="nav-link" onclick="go('s-home')" data-i18n="nav_home">Главная</button></div><div class="profile-btn" style="border-color:var(--accent2)"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="profile-wrap fade-in">
+    <div class="profile-hd"><div class="av-lg">АН</div><div><div class="pname">Александр Новиков</div><div class="pemail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6c0d4202031a0507031a2c150d02080914421e19">[email&#160;protected]</a></div></div><div class="plan-badge"><div class="pn">Яндекс Плюс</div><div class="pd">до 15.04.2026</div></div></div>
+    <div class="pgrid">
+      <div class="ptile" onclick="go('s-history')"><div class="ptile-ic">📋</div><div class="ptile-t" data-i18n="history">История просмотров</div><div class="ptile-d">47 фильмов</div></div>
+      <div class="ptile" onclick="go('s-favorites');buildFavGrid()"><div class="ptile-ic">❤️</div><div class="ptile-t" data-i18n="favorites">Избранное</div><div class="ptile-d" id="favCount">0 сохранённых</div></div>
+      <div class="ptile" onclick="go('s-settings')"><div class="ptile-ic">⚙️</div><div class="ptile-t" data-i18n="settings">Настройки</div><div class="ptile-d" data-i18n="settings_sub">Качество, язык, звук</div></div>
+      <div class="ptile" onclick="showToast('👨‍👩‍👧 Детский профиль')"><div class="ptile-ic">👨‍👩‍👧</div><div class="ptile-t" data-i18n="kids_profile">Детский профиль</div><div class="ptile-d">0–12 лет</div></div>
+    </div>
+    <button class="logout" onclick="go('s-login')" data-i18n="logout">Выйти из аккаунта</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="screen" id="s-history">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="subpage-wrap fade-in">
+    <div class="subpage-title" data-i18n="history">История просмотров</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<!-- FAVORITES -->
+<div class="screen" id="s-favorites">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="subpage-wrap fade-in">
+    <div class="subpage-title" data-i18n="favorites">Избранное</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;padding:4px;" id="favGrid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen" id="s-settings">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div><div class="profile-btn" onclick="go('s-profile')"><div class="avatar">АН</div><span data-i18n="my_profile">Мой профиль</span></div></div>
+  <div class="back-btn" onclick="goBack()" data-i18n="back">← Назад</div>
+  <div class="subpage-wrap fade-in">
+    <div class="subpage-title" data-i18n="settings">Настройки</div>
+    <div class="settings-list">
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="video_quality">Качество видео</div><div class="settings-val" id="qualityVal">1080p HD</div></div>
+        <button class="settings-btn" onclick="openQuality()" data-i18n="change">Изменить</button>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="volume_setting">Громкость</div><div class="settings-val" id="volSettingVal">60%</div></div>
+        <button class="settings-btn" onclick="openVolumeModal()" data-i18n="change">Изменить</button>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="subtitles">Субтитры</div><div class="settings-val" data-i18n="russian">Русский</div></div>
+        <div class="toggle on" id="tog1" onclick="toggleSetting('tog1')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="autoplay">Автовоспроизведение</div><div class="settings-val" data-i18n="autoplay_sub">Следующая серия через 5 сек</div></div>
+        <div class="toggle on" id="tog2" onclick="toggleSetting('tog2')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="notifications">Push-уведомления</div><div class="settings-val" data-i18n="notifications_sub">Новинки и рекомендации</div></div>
+        <div class="toggle" id="tog3" onclick="toggleSetting('tog3')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="voice_search_setting">Голосовой поиск (Алиса)</div></div>
+        <div class="toggle on" id="tog4" onclick="toggleSetting('tog4')"></div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label" data-i18n="language">Язык интерфейса</div><div class="settings-val" id="langVal">Русский</div></div>
+        <select class="lang-select" id="langSelect" onchange="changeLang(this.value)">
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="s-login">
+  <div class="topbar"><div class="logo" onclick="go('s-home')">Кинопоиск</div></div>
+  <div class="login-wrap fade-in"><div class="login-card">
+    <div class="login-logo">Кинопоиск</div>
+    <div class="login-sub" data-i18n="login_sub">Войдите, чтобы продолжить</div>
+    <div class="form-g"><label class="form-l" data-i18n="email_phone">Email или телефон</label><input class="form-i" type="text" placeholder="example@mail.ru"></div>
+    <div class="form-g"><label class="form-l" data-i18n="password">Пароль</label><input class="form-i" type="password" placeholder="••••••••"></div>
+    <button class="login-btn" onclick="loginOk()" data-i18n="login_btn">Войти →</button>
+    <div class="divider" data-i18n="or_via">или войдите через</div>
+    <button class="social-btn" onclick="loginOk()">🟡 <span data-i18n="yandex_id">Войти через Яндекс ID</span></button>
+    <button class="social-btn" onclick="loginOk()">📱 <span data-i18n="vk_id">Войти через VK</span></button>
+    <div class="login-sw"><span data-i18n="no_account">Нет аккаунта?</span> <span onclick="showToast('📝')" data-i18n="register">Зарегистрироваться</span></div></div></div>
+<script 
+<script>
+// ══ I18N ══
+const LANGS = {
+  ru:{
+    nav_home:'Главная',nav_catalog:'Каталог',nav_series:'Сериалы',nav_kids:'Детям',nav_sport:'Спорт',nav_search:'Поиск',
+    my_profile:'Мой профиль',new_week:'● НОВИНКА НЕДЕЛИ',watch:'▶ Смотреть',details:'ℹ Подробнее',
+    watch_btn:'Смотреть →',continue_watching:'Продолжить просмотр',all:'Все →',
+    about_film:'О фильме',actors:'Актёры',reviews:'Отзывы',add_fav:'+ Избранное',
+    write_review:'Написать отзыв',publish:'Опубликовать',
+    back:'← Назад',history:'История просмотров',favorites:'Избранное',
+    settings:'Настройки',settings_sub:'Качество, язык, звук',kids_profile:'Детский профиль',logout:'Выйти из аккаунта',
+    video_quality:'Качество видео',volume_setting:'Громкость',subtitles:'Субтитры',russian:'Русский',
+    autoplay:'Автовоспроизведение',autoplay_sub:'Следующая серия через 5 сек',
+    notifications:'Push-уведомления',notifications_sub:'Новинки и рекомендации',
+    voice_search_setting:'Голосовой поиск (Алиса)',language:'Язык интерфейса',change:'Изменить',
+    login_sub:'Войдите, чтобы продолжить',email_phone:'Email или телефон',password:'Пароль',
+    login_btn:'Войти →',or_via:'или войдите через',yandex_id:'Войти через Яндекс ID',vk_id:'Войти через VK',
+    no_account:'Нет аккаунта?',register:'Зарегистрироваться',
+    to_home:'🏠 На главную',find_more:'🔍 Найти ещё',because_watched:'Потому что вы смотрели',
+    next_btn:'Следующий →',
+    added_fav:'✓ Добавлено в избранное',enabled:'✓ Включено',disabled:'✓ Выключено',
+    cats:{
+      all:'Все',new:'🔥 Новинки',action:'💥 Боевики',comedy:'😂 Комедии',drama:'🎭 Драмы',
+      animation:'🧸 Мультфильмы',docs:'🎬 Документальные',sport:'⚽ Спорт',series:'📺 Сериалы',thriller:'🔪 Триллеры',
+      films:'🎬 Фильмы',kids:'👶 Детям'
+    },
+    quality_label:'Качество видео',
+    rating_q:'Как вам фильм?',rating_choose:'Выберите оценку',rating_confirm:'Оценить',rating_skip:'Пропустить',
+    rating_labels:['','Ужасно','Очень плохо','Плохо','Ниже среднего','Средне','Неплохо','Хорошо','Очень хорошо','Отлично','Шедевр!'],
+    ob_title:'Голосовой поиск',ob_try:'Попробовать →',ob_skip:'Пропустить',
+    ob_text:'Нажми кнопку с микрофоном в строке поиска и скажи что ищешь — набирать по буквам не нужно.',
+    ob_example:'«Найди комедию» · «Включи сериал про войну»',
+    search_ph:'Название фильма...',
+    vol_title:'Громкость',vol_close:'OK',
+    director:'Режиссёр',year:'Год',country:'Страна',genre:'Жанр',age:'Возраст',duration:'Длительность',episodes:'Серий',seasons:'Сезонов',
+    watched_badge:'✓ Просмотрено',
+    unavail_title:'Приложение недоступно',unavail_text:'Только Кинопоиск доступен в этом прототипе.',unavail_btn:'Понятно'
+  },
+  en:{
+    nav_home:'Home',nav_catalog:'Catalog',nav_series:'Series',nav_kids:'For Kids',nav_sport:'Sports',nav_search:'Search',
+    my_profile:'My Profile',new_week:'● NEW THIS WEEK',watch:'▶ Watch',details:'ℹ Details',
+    watch_btn:'Watch →',continue_watching:'Continue Watching',all:'All →',
+    about_film:'About',actors:'Cast',reviews:'Reviews',add_fav:'+ Watchlist',
+    write_review:'Write a Review',publish:'Publish',
+    back:'← Back',history:'Watch History',favorites:'Watchlist',
+    settings:'Settings',settings_sub:'Quality, language, sound',kids_profile:'Kids Profile',logout:'Sign Out',
+    video_quality:'Video Quality',volume_setting:'Volume',subtitles:'Subtitles',russian:'Russian',
+    autoplay:'Autoplay',autoplay_sub:'Next episode in 5 sec',
+    notifications:'Push Notifications',notifications_sub:'New releases & recommendations',
+    voice_search_setting:'Voice Search (Alice)',language:'Interface Language',change:'Change',
+    login_sub:'Sign in to continue',email_phone:'Email or phone',password:'Password',
+    login_btn:'Sign In →',or_via:'or sign in with',yandex_id:'Sign in with Yandex ID',vk_id:'Sign in with VK',
+    no_account:'No account?',register:'Sign Up',
+    to_home:'🏠 Home',find_more:'🔍 Find More',because_watched:'Because you watched',
+    next_btn:'Next →',
+    added_fav:'✓ Added to Watchlist',enabled:'✓ Enabled',disabled:'✓ Disabled',
+    cats:{
+      all:'All',new:'🔥 New',action:'💥 Action',comedy:'😂 Comedy',drama:'🎭 Drama',
+      animation:'🧸 Animation',docs:'🎬 Documentary',sport:'⚽ Sports',series:'📺 Series',thriller:'🔪 Thriller',
+      films:'🎬 Films',kids:'👶 For Kids'
+    },
+    quality_label:'Video Quality',
+    rating_q:'How was the film?',rating_choose:'Choose a rating',rating_confirm:'Rate',rating_skip:'Skip',
+    rating_labels:['','Awful','Very Bad','Bad','Below Average','Average','Decent','Good','Very Good','Excellent','Masterpiece!'],
+    ob_title:'Voice Search',ob_try:'Try it →',ob_skip:'Skip',
+    ob_text:'Press the microphone button in the search bar and say what you\'re looking for — no typing needed.',
+    ob_example:'"Find a comedy" · "Play a war series"',
+    search_ph:'Movie title, actor, genre...',
+    vol_title:'Volume',vol_close:'OK',
+    director:'Director',year:'Year',country:'Country',genre:'Genre',age:'Age',duration:'Duration',episodes:'Episodes',seasons:'Seasons',
+    watched_badge:'✓ Watched',
+    unavail_title:'App Not Available',unavail_text:'Only Kinopoisk is available in this prototype.',unavail_btn:'Got It'
+  }
+};
+let LANG = 'ru';
+function L(key){return LANGS[LANG][key]||LANGS.ru[key]||key;}
+
+function safeSet(id, val){
+  const el = document.getElementById(id);
+  if(el) el.textContent = val;
+}
+function safeSetPh(id, val){
+  const el = document.getElementById(id);
+  if(el) el.placeholder = val;
+}
+function safeSetVal(id, val){
+  const el = document.getElementById(id);
+  if(el) el.value = val;
+}
+
+function applyLang(){
+  // Translate all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.dataset.i18n;
+    const t=LANGS[LANG][k];
+    if(t) el.textContent=t;
+  });
+  // Placeholders
+  safeSetPh('searchInput', L('search_ph'));
+  safeSetPh('homeSearchPh', L('search_ph'));
+  // Onboarding
+  safeSet('obTitle', L('ob_title'));
+  safeSet('obText', L('ob_text'));
+  safeSet('obExample', L('ob_example'));
+  safeSet('obTryBtn', L('ob_try'));
+  safeSet('obSkipBtn', L('ob_skip'));
+  // Rating modal
+  safeSet('ratingQ', L('rating_q'));
+  safeSet('ratingLabel', L('rating_choose'));
+  safeSet('ratingConfirmBtn', L('rating_confirm'));
+  safeSet('ratingSkipBtn', L('rating_skip'));
+  // Unavail modal
+  safeSet('unavailTitle', L('unavail_title'));
+  safeSet('unavailBtn', L('unavail_btn'));
+  // Volume modal
+  safeSet('volTitle', L('vol_title'));
+  safeSet('volClose', L('vol_close'));
+  // Language settings
+  safeSet('langVal', LANG==='ru'?'Русский':'English');
+  safeSetVal('langSelect', LANG);
+  // Rebuild dynamic content
+  buildHomeCats();
+  buildCatalogFilters();
+  buildSearchFchips();
+  renderGenre(_curCat);
+  renderCatalog(_curCatalogCat);
+  const si = document.getElementById('searchInput');
+  renderSearch(si ? si.value : '');
+  buildContinueRow();
+  buildRecsRow();
+  buildHistoryList();
+  // Hero text
+  safeSet('heroTitle', LANG==='en'?'The Master and Margarita':'Мастер и Маргарита');
+  safeSet('heroMeta', LANG==='en'?'2024 · Drama · 2h 1m · ★ 8.2':'2024 · Драма · 2ч 1м · ★ 8.2');
+  safeSet('homeBannerTitle', LANG==='en'?'⚽ CSKA — Spartak · Cup Final':'⚽ ЦСКА — Спартак · Финал Кубка России');
+  safeSet('homeBannerSub', LANG==='en'?'Live broadcast · 2nd half · 1:0':'Прямая трансляция · 2-й тайм · 1:0');
+  safeSet('watchedBadge', L('watched_badge')+': '+(LANG==='en'?'The Master and Margarita · 2h 01m':'Мастер и Маргарита · 2ч 01м'));
+}
+
+function changeLang(val){
+  LANG=val;
+  applyLang();
+  showToast(val==='en'?'🌐 English interface enabled':'🌐 Интерфейс переключён на русский');
+}
+
+// ══ FILM DATA ══
+const FILM_DB = {
+  master:{id:'master',
+    title:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},
+    year:'2024',genre:{ru:'Драма',en:'Drama'},duration:{ru:'2ч 1м',en:'2h 1m'},rating:'8.2',
+    poster:'',
+    tags:{ru:['Драма','Фэнтези','18+'],en:['Drama','Fantasy','18+']},
+    desc:{ru:'Писатель встречает загадочного иностранца Воланда. В Москву приезжает дьявол со свитой, устраивая хаос.',en:'A writer meets the mysterious Woland. The devil arrives in Moscow with his retinue, causing chaos.'},
+    fullDesc:{ru:'Молодой писатель, чья пьеса снята с репертуара, встречает таинственного иностранца Воланда. Параллельно разворачивается история любви Мастера и Маргариты, а также библейская история Понтия Пилата.',en:'A young writer whose play has been banned meets the mysterious foreigner Woland. The love story of the Master and Margarita unfolds alongside the biblical story of Pontius Pilate.'},
+    details:{ru:{Режиссёр:'Михаил Локшин',Год:'2024',Страна:'Россия',Жанр:'Драма, Фэнтези',Возраст:'18+',Длительность:'2ч 1м'},en:{Director:'Mikhail Loksin',Year:'2024',Country:'Russia',Genre:'Drama, Fantasy',Rating:'18+',Duration:'2h 1m'}},
+    actors:[{name:'Аугуст Диль / August Diehl',role:{ru:'Воланд',en:'Woland'},icon:'👨‍🎨'},{name:'Евгений Цыганов',role:{ru:'Мастер',en:'The Master'},icon:'👨'},{name:'Юлия Снигирь',role:{ru:'Маргарита',en:'Margarita'},icon:'👩'},{name:'Клас Банг',role:{ru:'Пилат',en:'Pilate'},icon:'👨‍💼'},{name:'Алексей Розин',role:{ru:'Берлиоз',en:'Berlioz'},icon:'🧔'}],
+    reviews:[{name:'Иван К.',date:'15.03.2024',stars:9,text:{ru:'Потрясающая экранизация! Аугуст Диль в роли Воланда — идеальный кастинг.',en:'Stunning adaptation! August Diehl as Woland — perfect casting.'}},{name:'Мария П.',date:'18.03.2024',stars:8,text:{ru:'Очень красивый фильм. Немного не хватило глубины.',en:'Very beautiful film. Lacks some depth.'}}]
+  },
+  slovo:{id:'slovo',
+    title:{ru:'Слово пацана',en:'Word of a Boy'},
+    year:'2023',genre:{ru:'Криминал',en:'Crime'},duration:{ru:'8 серий',en:'8 episodes'},rating:'8.8',
+    poster:'',
+    tags:{ru:['Криминал','Драма','18+'],en:['Crime','Drama','18+']},
+    desc:{ru:'Казань, конец 1980-х. История подростков, втянутых в жестокие уличные разборки.',en:'Kazan, late 1980s. The story of teenagers drawn into violent street gang wars.'},
+    fullDesc:{ru:'Сериал рассказывает о жизни подростков в Казани конца 1980-х, когда улицы были поделены между группировками.',en:'The series tells about teenagers in late 1980s Kazan when streets were divided between criminal gangs.'},
+    details:{ru:{Режиссёр:'Жора Крыжовников',Год:'2023',Страна:'Россия',Жанр:'Криминал',Возраст:'18+',Серий:'8'},en:{Director:'Zhora Kryzhovnikov',Year:'2023',Country:'Russia',Genre:'Crime',Rating:'18+',Episodes:'8'}},
+    actors:[{name:'Леон Кемстач',role:{ru:'Андрей',en:'Andrei'},icon:'👦'},{name:'Иван Янковский',role:{ru:'Вова',en:'Vova'},icon:'👨'},{name:'Рузиль Минекаев',role:{ru:'Марат',en:'Marat'},icon:'🧔'}],
+    reviews:[{name:'Дмитрий В.',date:'12.11.2023',stars:10,text:{ru:'Лучший сериал года! Смотрел на одном дыхании.',en:'Best series of the year! Watched in one sitting.'}}]
+  },
+  dune:{id:'dune',
+    title:{ru:'Дюна: Часть 2',en:'Dune: Part Two'},
+    year:'2024',genre:{ru:'Фантастика',en:'Sci-Fi'},duration:{ru:'2ч 46м',en:'2h 46m'},rating:'8.5',
+    poster:'',
+    tags:{ru:['Фантастика','Приключения','12+'],en:['Sci-Fi','Adventure','12+']},
+    desc:{ru:'Пол Атрейдес объединяется с фременами, ведя войну против заговорщиков.',en:'Paul Atreides unites with the Fremen in a war against the conspirators who destroyed his family.'},
+    fullDesc:{ru:'Продолжение масштабной саги. Пол Атрейдес продолжает путешествие среди фременов планеты Арракис.',en:'Continuation of the epic saga. Paul Atreides continues his journey among the Fremen of Arrakis.'},
+    details:{ru:{Режиссёр:'Дени Вильнёв',Год:'2024',Страна:'США',Жанр:'Фантастика',Возраст:'12+',Длительность:'2ч 46м'},en:{Director:'Denis Villeneuve',Year:'2024',Country:'USA',Genre:'Sci-Fi',Rating:'12+',Duration:'2h 46m'}},
+    actors:[{name:'Тимоти Шаламе',role:{ru:'Пол Атрейдес',en:'Paul Atreides'},icon:'👨'},{name:'Зендая',role:{ru:'Чани',en:'Chani'},icon:'👩'},{name:'Остин Батлер',role:{ru:'Фейд-Раута',en:'Feyd-Rautha'},icon:'👨‍🦱'}],
+    reviews:[{name:'Алексей М.',date:'05.03.2024',stars:9,text:{ru:'Визуально потрясающий фильм. Вильнёв снова превзошёл себя.',en:'Visually stunning. Villeneuve outdid himself again.'}}]
+  },
+  sherlock:{id:'sherlock',
+    title:{ru:'Шерлок',en:'Sherlock'},
+    year:'2010',genre:{ru:'Детектив',en:'Detective'},duration:{ru:'4 сезона',en:'4 seasons'},rating:'9.1',
+    poster:'',
+    tags:{ru:['Детектив','Драма','16+'],en:['Detective','Drama','16+']},
+    desc:{ru:'Современная интерпретация историй о Шерлоке Холмсе.',en:'A modern take on the Sherlock Holmes stories set in contemporary London.'},
+    fullDesc:{ru:'Британский сериал переносит знаменитого детектива в современный Лондон.',en:'The British series brings the famous detective to modern London.'},
+    details:{ru:{Режиссёр:'М. Гатисс, С. Моффат',Год:'2010–2017',Страна:'Великобритания',Жанр:'Детектив',Возраст:'16+',Сезонов:'4'},en:{Director:'M. Gatiss, S. Moffat',Year:'2010–2017',Country:'UK',Genre:'Detective',Rating:'16+',Seasons:'4'}},
+    actors:[{name:'Бенедикт Камбербэтч',role:{ru:'Шерлок Холмс',en:'Sherlock Holmes'},icon:'🕵️'},{name:'Мартин Фриман',role:{ru:'Ватсон',en:'Watson'},icon:'👨‍⚕️'},{name:'Эндрю Скотт',role:{ru:'Мориарти',en:'Moriarty'},icon:'😈'}],
+    reviews:[{name:'Наталья С.',date:'10.01.2024',stars:10,text:{ru:'Эталонный детективный сериал. Пересматриваю в третий раз!',en:'The gold standard of detective series. Watching for the third time!'}}]
+  },
+  got:{id:'got',
+    title:{ru:'Игра Престолов',en:'Game of Thrones'},
+    year:'2011',genre:{ru:'Фэнтези',en:'Fantasy'},duration:{ru:'8 сезонов',en:'8 seasons'},rating:'9.2',
+    poster:'',
+    tags:{ru:['Фэнтези','Драма','18+'],en:['Fantasy','Drama','18+']},
+    desc:{ru:'Борьба знатных родов за железный трон Семи Королевств.',en:'Noble houses fight for control of the Iron Throne of the Seven Kingdoms.'},
+    fullDesc:{ru:'Эпическое фэнтези о войне и интригах в мире меча и магии.',en:'Epic fantasy about war and intrigue in a world of swords and magic.'},
+    details:{ru:{Режиссёр:'Разные',Год:'2011–2019',Страна:'США',Жанр:'Фэнтези',Возраст:'18+',Сезонов:'8'},en:{Director:'Various',Year:'2011–2019',Country:'USA',Genre:'Fantasy',Rating:'18+',Seasons:'8'}},
+    actors:[{name:'Эмилия Кларк',role:{ru:'Дейенерис',en:'Daenerys'},icon:'👸'},{name:'Кит Харингтон',role:{ru:'Джон Сноу',en:'Jon Snow'},icon:'⚔️'},{name:'Питер Динклэйдж',role:{ru:'Тирион',en:'Tyrion'},icon:'🍷'}],
+    reviews:[{name:'Сергей Р.',date:'01.01.2024',stars:8,text:{ru:'Первые 7 сезонов — шедевр. Финал разочаровал.',en:'First 7 seasons are masterpieces. The finale disappointed.'}}]
+  },
+  breaking:{id:'breaking',
+    title:{ru:'Во все тяжкие',en:'Breaking Bad'},
+    year:'2008',genre:{ru:'Криминал',en:'Crime'},duration:{ru:'5 сезонов',en:'5 seasons'},rating:'9.5',
+    poster:'',
+    tags:{ru:['Криминал','Триллер','18+'],en:['Crime','Thriller','18+']},
+    desc:{ru:'Учитель химии начинает производить метамфетамин после постановки диагноза рак.',en:'A chemistry teacher starts producing methamphetamine after a cancer diagnosis.'},
+    fullDesc:{ru:'Уолтер Уайт — учитель химии, узнавший о смертельном диагнозе. Он решает обеспечить семью, встав на путь преступления.',en:'Walter White, a chemistry teacher with a terminal diagnosis, decides to secure his family\'s future by turning to crime.'},
+    details:{ru:{Режиссёр:'Винс Гиллиган',Год:'2008–2013',Страна:'США',Жанр:'Криминал',Возраст:'18+',Сезонов:'5'},en:{Director:'Vince Gilligan',Year:'2008–2013',Country:'USA',Genre:'Crime',Rating:'18+',Seasons:'5'}},
+    actors:[{name:'Брайан Крэнстон',role:{ru:'Уолтер Уайт',en:'Walter White'},icon:'🧪'},{name:'Аарон Пол',role:{ru:'Джесси Пинкман',en:'Jesse Pinkman'},icon:'👦'}],
+    reviews:[{name:'Антон Г.',date:'15.02.2024',stars:10,text:{ru:'Лучший сериал всех времён. Нет слов.',en:'Best series of all time. No words.'}}]
+  },
+  holop2:{id:'holop2',
+    title:{ru:'Холоп 2',en:'Serf 2'},
+    year:'2024',genre:{ru:'Комедия',en:'Comedy'},duration:{ru:'1ч 58м',en:'1h 58m'},rating:'7.1',
+    poster:'',e:'😂',
+    tags:{ru:['Комедия','16+'],en:['Comedy','16+']},
+    desc:{ru:'Продолжение истории о мажоре Грише.',en:'A sequel about spoiled rich kid Grisha.'},
+    fullDesc:{ru:'Гриша снова попал в переделку. Отец нанимает специалистов, создав вокруг сына театральный мир — на этот раз за рубежом.',en:'Grisha is in trouble again. His father creates a theatrical world around him — this time abroad.'},
+    details:{ru:{Режиссёр:'Клим Шипенко',Год:'2024',Страна:'Россия',Жанр:'Комедия',Возраст:'16+',Длительность:'1ч 58м'},en:{Director:'Klim Shipenko',Year:'2024',Country:'Russia',Genre:'Comedy',Rating:'16+',Duration:'1h 58m'}},
+    actors:[{name:'Милош Бикович',role:{ru:'Гриша',en:'Grisha'},icon:'👨'},{name:'Александр Самойленко',role:{ru:'Отец',en:'Father'},icon:'👴'}],
+    reviews:[{name:'Алексей Р.',date:'10.01.2024',stars:7,text:{ru:'Первая часть была лучше.',en:'First part was better.'}}]
+  },
+  vyzov:{id:'vyzov',
+    title:{ru:'Вызов',en:'The Challenge'},
+    year:'2023',genre:{ru:'Драма',en:'Drama'},duration:{ru:'2ч 20м',en:'2h 20m'},rating:'7.0',
+    poster:'',e:'🎬',
+    tags:{ru:['Драма','12+'],en:['Drama','12+']},
+    desc:{ru:'Первый художественный фильм, снятый на борту МКС.',en:'The first feature film shot aboard the International Space Station.'},
+    fullDesc:{ru:'Хирург Женя Беляева отправляется на МКС провести операцию. Снимался непосредственно на борту станции с настоящими космонавтами.',en:'Surgeon Zhenya Belyaeva travels to the ISS for an operation. Shot directly aboard the station with real cosmonauts.'},
+    details:{ru:{Режиссёр:'Клим Шипенко',Год:'2023',Страна:'Россия',Жанр:'Драма',Возраст:'12+',Длительность:'2ч 20м'},en:{Director:'Klim Shipenko',Year:'2023',Country:'Russia',Genre:'Drama',Rating:'12+',Duration:'2h 20m'}},
+    actors:[{name:'Юлия Пересильд',role:{ru:'Женя Беляева',en:'Zhenya Belyaeva'},icon:'👩'},{name:'Антон Шкаплеров',role:{ru:'Командир МКС',en:'ISS Commander'},icon:'👨‍✈️'}],
+    reviews:[{name:'Дмитрий В.',date:'20.04.2023',stars:8,text:{ru:'Первый фильм в космосе — обязательно к просмотру.',en:'First film shot in space — a must-watch.'}}]
+  },
+  majorgrom:{id:'majorgrom',
+    title:{ru:'Майор Гром',en:'Major Thunder'},
+    year:'2021',genre:{ru:'Боевик',en:'Action'},duration:{ru:'2ч 17м',en:'2h 17m'},rating:'7.4',
+    poster:'',e:'🎬',
+    tags:{ru:['Боевик','Супергерои','16+'],en:['Action','Superhero','16+']},
+    desc:{ru:'Неподкупный майор расследует расправы над коррумпированными чиновниками.',en:'An incorruptible major investigates vigilante attacks on corrupt officials.'},
+    fullDesc:{ru:'Майор Игорь Гром — лучший детектив Петербурга. Таинственный Чумной Доктор творит суд и расправу. Гром вынужден столкнуться с тем, кого многие считают героем.',en:'Major Igor Grom is Petersburg best detective. The mysterious Plague Doctor delivers vigilante justice. Grom must confront someone many consider a hero.'},
+    details:{ru:{Режиссёр:'Олег Трофим',Год:'2021',Страна:'Россия',Жанр:'Боевик',Возраст:'16+',Длительность:'2ч 17м'},en:{Director:'Oleg Trofim',Year:'2021',Country:'Russia',Genre:'Action',Rating:'16+',Duration:'2h 17m'}},
+    actors:[{name:'Тихон Жизневский',role:{ru:'Игорь Гром',en:'Igor Grom'},icon:'👮'},{name:'Сергей Горошко',role:{ru:'Разумовский',en:'Razumovsky'},icon:'🎭'},{name:'Любовь Аксёнова',role:{ru:'Юля Пчёлкина',en:'Julia Pcholkina'},icon:'👩'}],
+    reviews:[{name:'Антон М.',date:'01.05.2021',stars:8,text:{ru:'Лучший российский супергеройский фильм!',en:'Best Russian superhero movie!'}}]
+  },
+  nelyubov:{id:'nelyubov',
+    title:{ru:'Нелюбовь',en:'Loveless'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'💔',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  leviafan:{id:'leviafan',
+    title:{ru:'Левиафан',en:'Leviathan'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🏔',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  voynaimir:{id:'voynaimir',
+    title:{ru:'Война и мир',en:'War and Peace'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🕊',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  admiral:{id:'admiral',
+    title:{ru:'Адмиралъ',en:'Admiral'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'⚓',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  ivanvas:{id:'ivanvas',
+    title:{ru:'Иван Васильевич',en:'Ivan Vasilievich'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🎉',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  operatsiya:{id:'operatsiya',
+    title:{ru:'Операция Ы',en:'Operation Y'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🤡',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  kavkaz:{id:'kavkaz',
+    title:{ru:'Кавказская пленница',en:'Kidnapping Caucasian Style'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🎭',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  bruka:{id:'bruka',
+    title:{ru:'Бриллиантовая рука',en:'Diamond Arm'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🍾',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  nachalo:{id:'nachalo',
+    title:{ru:'Начало',en:'Inception'},
+    year:'2010',genre:{ru:'Триллер',en:'Thriller'},duration:{ru:'2ч 28м',en:'2h 28m'},rating:'8.8',
+    poster:'',e:'🎬',
+    tags:{ru:['Триллер','Фантастика','12+'],en:['Thriller','Sci-Fi','12+']},
+    desc:{ru:'Вор, крадущий секреты из снов, получает задание внедрить идею в чужое подсознание.',en:'A thief who steals secrets from dreams is tasked with planting an idea into someone subconscious.'},
+    fullDesc:{ru:'Дом Кобб умеет проникать в сны и красть секреты. Его финальное задание — операция Начало: не украсть идею, а внедрить её через несколько уровней реальности.',en:'Dom Cobb can enter dreams and steal secrets. His final task is Inception: not stealing an idea, but planting one through multiple layers of reality.'},
+    details:{ru:{Режиссёр:'Кристофер Нолан',Год:'2010',Страна:'США',Жанр:'Триллер',Возраст:'12+',Длительность:'2ч 28м'},en:{Director:'Christopher Nolan',Year:'2010',Country:'USA',Genre:'Thriller',Rating:'12+',Duration:'2h 28m'}},
+    actors:[{name:'Леонардо ДиКаприо',role:{ru:'Дом Кобб',en:'Dom Cobb'},icon:'👨'},{name:'Джозеф Гордон-Левитт',role:{ru:'Артур',en:'Arthur'},icon:'👨‍💼'},{name:'Том Харди',role:{ru:'Имс',en:'Eames'},icon:'🎭'},{name:'Эллиот Пейдж',role:{ru:'Ариадна',en:'Ariadne'},icon:'👩'}],
+    reviews:[{name:'Павел О.',date:'01.02.2024',stars:10,text:{ru:'Каждый просмотр открывает что-то новое.',en:'Every viewing reveals something new.'}}]
+  },
+  gladiator:{id:'gladiator',
+    title:{ru:'Гладиатор',en:'Gladiator'},
+    year:'2000',genre:{ru:'Боевик',en:'Action'},duration:{ru:'2ч 35м',en:'2h 35m'},rating:'8.5',
+    poster:'',e:'🎬',
+    tags:{ru:['Боевик','История','16+'],en:['Action','Historical','16+']},
+    desc:{ru:'Римский полководец Максимус предан и обращён в рабство — путь к свободе через арену.',en:'Roman general Maximus is betrayed and enslaved — his path to freedom is through the arena.'},
+    fullDesc:{ru:'Максимус — непобедимый полководец Рима. Предательство Коммода лишает его свободы и семьи. Теперь только арена гладиаторов может вернуть ему честь и месть.',en:'Maximus is Rome invincible general. Commodus betrayal costs him his freedom and family. Now only the gladiatorial arena can return his honor and revenge.'},
+    details:{ru:{Режиссёр:'Ридли Скотт',Год:'2000',Страна:'США',Жанр:'Боевик',Возраст:'16+',Длительность:'2ч 35м'},en:{Director:'Ridley Scott',Year:'2000',Country:'USA',Genre:'Action',Rating:'16+',Duration:'2h 35m'}},
+    actors:[{name:'Рассел Кроу',role:{ru:'Максимус',en:'Maximus'},icon:'⚔️'},{name:'Хоакин Феникс',role:{ru:'Коммод',en:'Commodus'},icon:'👑'},{name:'Конни Нильсен',role:{ru:'Луцилла',en:'Lucilla'},icon:'👸'}],
+    reviews:[{name:'Сергей В.',date:'12.03.2023',stars:10,text:{ru:'Один из лучших фильмов всех времён.',en:'One of the best films of all time.'}}]
+  },
+  sem:{id:'sem',
+    title:{ru:'Семь',en:'Se7en'},
+    year:'1995',genre:{ru:'Триллер',en:'Thriller'},duration:{ru:'2ч 07м',en:'2h 7m'},rating:'8.6',
+    poster:'',e:'🎬',
+    tags:{ru:['Триллер','Детектив','18+'],en:['Thriller','Detective','18+']},
+    desc:{ru:'Два детектива разыскивают убийцу, использующего семь смертных грехов как мотивы.',en:'Two detectives hunt a killer who uses the seven deadly sins as motives.'},
+    fullDesc:{ru:'Детектив Сомерсет и его молодой напарник Миллс расследуют серию жутких убийств. Каждое преступление соответствует одному из семи смертных грехов.',en:'Veteran detective Somerset and young partner Mills investigate gruesome murders. Each crime corresponds to one of the seven deadly sins.'},
+    details:{ru:{Режиссёр:'Дэвид Финчер',Год:'1995',Страна:'США',Жанр:'Триллер',Возраст:'18+',Длительность:'2ч 07м'},en:{Director:'David Fincher',Year:'1995',Country:'USA',Genre:'Thriller',Rating:'18+',Duration:'2h 7m'}},
+    actors:[{name:'Брэд Питт',role:{ru:'Дэвид Миллс',en:'David Mills'},icon:'👮'},{name:'Морган Фримен',role:{ru:'Сомерсет',en:'Somerset'},icon:'🕵️'},{name:'Кевин Спейси',role:{ru:'Джон Доу',en:'John Doe'},icon:'😈'}],
+    reviews:[{name:'Игорь Б.',date:'05.12.2023',stars:10,text:{ru:'Один из лучших триллеров в истории кино.',en:'One of the best thrillers in cinema history.'}}]
+  },
+  siyanie:{id:'siyanie',
+    title:{ru:'Сияние',en:'The Shining'},
+    year:'1980',genre:{ru:'Хоррор',en:'Horror'},duration:{ru:'2ч 24м',en:'2h 24m'},rating:'8.4',
+    poster:'',e:'🎬',
+    tags:{ru:['Хоррор','Триллер','18+'],en:['Horror','Thriller','18+']},
+    desc:{ru:'Писатель становится смотрителем горного отеля. Изоляция и призраки сводят его с ума.',en:'A writer becomes caretaker of a mountain hotel. Isolation and ghosts drive him insane.'},
+    fullDesc:{ru:'Джек Торранс переезжает с семьёй в отель Overlook на зиму. Постепенно голоса и призраки сводят его с ума. Его сын Дэнни обладает даром — сиянием.',en:'Jack Torrance moves his family to the Overlook Hotel for winter. Gradually voices and ghosts drive him insane. His son Danny has a special gift — the shining.'},
+    details:{ru:{Режиссёр:'Стэнли Кубрик',Год:'1980',Страна:'США',Жанр:'Хоррор',Возраст:'18+',Длительность:'2ч 24м'},en:{Director:'Stanley Kubrick',Year:'1980',Country:'USA',Genre:'Horror',Rating:'18+',Duration:'2h 24m'}},
+    actors:[{name:'Джек Николсон',role:{ru:'Джек Торранс',en:'Jack Torrance'},icon:'😈'},{name:'Шелли Дювалл',role:{ru:'Венди',en:'Wendy'},icon:'👩'},{name:'Дэнни Ллойд',role:{ru:'Дэнни',en:'Danny'},icon:'👦'}],
+    reviews:[{name:'Максим Р.',date:'31.10.2023',stars:10,text:{ru:'Величайший фильм ужасов всех времён.',en:'The greatest horror film of all time.'}}]
+  },
+  terminator2:{id:'terminator2',
+    title:{ru:'Терминатор 2',en:'Terminator 2'},
+    year:'1991',genre:{ru:'Боевик',en:'Action'},duration:{ru:'2ч 17м',en:'2h 17m'},rating:'8.6',
+    poster:'',e:'🎬',
+    tags:{ru:['Боевик','Фантастика','16+'],en:['Action','Sci-Fi','16+']},
+    desc:{ru:'T-800 возвращается защищать Джона Коннора от жидкометаллического T-1000.',en:'The T-800 returns to protect John Connor from the liquid-metal T-1000.'},
+    fullDesc:{ru:'Два Терминатора из будущего: T-800 теперь защитник Джона Коннора, а T-1000 — совершенная машина-убийца, принявшая облик полицейского.',en:'Two Terminators from the future: T-800 is now John Connor protector, while T-1000 is a perfect killing machine disguised as a policeman.'},
+    details:{ru:{Режиссёр:'Джеймс Кэмерон',Год:'1991',Страна:'США',Жанр:'Боевик',Возраст:'16+',Длительность:'2ч 17м'},en:{Director:'James Cameron',Year:'1991',Country:'USA',Genre:'Action',Rating:'16+',Duration:'2h 17m'}},
+    actors:[{name:'Арнольд Шварценеггер',role:{ru:'T-800',en:'T-800'},icon:'🤖'},{name:'Линда Хэмилтон',role:{ru:'Сара Коннор',en:'Sarah Connor'},icon:'💪'},{name:'Роберт Патрик',role:{ru:'T-1000',en:'T-1000'},icon:'😈'},{name:'Эдвард Фёрлонг',role:{ru:'Джон Коннор',en:'John Connor'},icon:'👦'}],
+    reviews:[{name:'Виктор П.',date:'15.06.2023',stars:10,text:{ru:'Лучший боевик всех времён. Спецэффекты до сих пор удивляют.',en:'Best action film of all time. The effects still amaze.'}}]
+  },
+  johnwick4:{id:'johnwick4',
+    title:{ru:'Джон Уик 4',en:'John Wick 4'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🔫',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  avengers:{id:'avengers',
+    title:{ru:'Мстители: Финал',en:'Avengers: Endgame'},
+    year:'2019',genre:{ru:'Боевик',en:'Action'},duration:{ru:'3ч 01м',en:'3h 1m'},rating:'8.4',
+    poster:'',e:'🎬',
+    tags:{ru:['Боевик','Супергерои','12+'],en:['Action','Superhero','12+']},
+    desc:{ru:'После уничтожения половины жизни Мстители собираются для финальной битвы с Таносом.',en:'After Thanos wiped out half of all life, the Avengers gather for a final battle.'},
+    fullDesc:{ru:'Оставшиеся Мстители должны отменить действия Таноса любой ценой. Путешествие во времени — их последний шанс. Грандиозная финальная битва Marvel.',en:'The surviving Avengers must reverse Thanos actions at any cost. Time travel is their last chance. The grand final battle of Marvel.'},
+    details:{ru:{Режиссёр:'Братья Руссо',Год:'2019',Страна:'США',Жанр:'Боевик',Возраст:'12+',Длительность:'3ч 01м'},en:{Director:'Russo Brothers',Year:'2019',Country:'USA',Genre:'Action',Rating:'12+',Duration:'3h 1m'}},
+    actors:[{name:'Роберт Дауни мл.',role:{ru:'Железный Человек',en:'Iron Man'},icon:'🦾'},{name:'Крис Эванс',role:{ru:'Капитан Америка',en:'Captain America'},icon:'🛡️'},{name:'Крис Хемсворт',role:{ru:'Тор',en:'Thor'},icon:'⚡'},{name:'Скарлетт Йоханссон',role:{ru:'Чёрная Вдова',en:'Black Widow'},icon:'🕷️'}],
+    reviews:[{name:'Михаил З.',date:'29.04.2019',stars:10,text:{ru:'Грандиозное завершение эпохи. Плакал три раза.',en:'Magnificent end of an era. Cried three times.'}}]
+  },
+  odindoma:{id:'odindoma',
+    title:{ru:'Один дома',en:'Home Alone'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🤣',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  rocky:{id:'rocky',
+    title:{ru:'Рокки',en:'Rocky'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🥊',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  avatar2:{id:'avatar2',
+    title:{ru:'Аватар 2',en:'Avatar 2'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'💙',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  blackmirror:{id:'blackmirror',
+    title:{ru:'Чёрное зеркало',en:'Black Mirror'},
+    year:'2011',genre:{ru:'Антология',en:'Anthology'},duration:{ru:'разные',en:'various'},rating:'8.8',
+    poster:'',e:'🎬',
+    tags:{ru:['Антология','Фантастика','18+'],en:['Anthology','Sci-Fi','18+']},
+    desc:{ru:'Антологический сериал о тёмной стороне технологий.',en:'An anthology series about the dark side of technology.'},
+    fullDesc:{ru:'Каждый эпизод — отдельная история о том, как технологии меняют человеческую природу. Сатира, триллер, антиутопия — в одном сериале.',en:'Each episode is a standalone story about how technology changes human nature. Satire, thriller, dystopia — all in one series.'},
+    details:{ru:{Создатель:'Чарли Брукер',Год:'с 2011',Страна:'Великобритания',Жанр:'Антология',Возраст:'18+',Эпизодов:'27'},en:{Creator:'Charlie Brooker',Year:'since 2011',Country:'UK',Genre:'Anthology',Rating:'18+',Episodes:'27'}},
+    actors:[{name:'Разные актёры',role:{ru:'В каждом эпизоде',en:'Each episode'},icon:'🎭'}],
+    reviews:[{name:'Артём Д.',date:'05.05.2023',stars:9,text:{ru:'Лучший сериал для тех кто любит думать.',en:'Best series for those who like to think.'}}]
+  },
+  shkola:{id:'shkola',
+    title:{ru:'Школа',en:'School'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🏫',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  molchanie:{id:'molchanie',
+    title:{ru:'Молчание ягнят',en:'The Silence of the Lambs'},
+    year:'1991',genre:{ru:'Триллер',en:'Thriller'},duration:{ru:'1ч 58м',en:'1h 58m'},rating:'8.6',
+    poster:'',e:'🕵️',
+    tags:{ru:['Триллер','Детектив','18+'],en:['Thriller','Detective','18+']},
+    desc:{ru:'Агент ФБР обращается за помощью к маньяку Ганнибалу Лектеру для поимки другого убийцы.',en:'An FBI agent seeks help from cannibal Hannibal Lecter to catch another serial killer.'},
+    fullDesc:{ru:'Стажёр ФБР Кларисса Старлинг берёт интервью у гениального психиатра и людоеда Ганнибала Лектера. Его помощь нужна для поимки маньяка Буффало Билла.',en:'FBI trainee Clarice Starling interviews brilliant psychiatrist and cannibal Hannibal Lecter. His help is needed to catch serial killer Buffalo Bill.'},
+    details:{ru:{Режиссёр:'Джонатан Демме',Год:'1991',Страна:'США',Жанр:'Триллер',Возраст:'18+',Длительность:'1ч 58м'},en:{Director:'Jonathan Demme',Year:'1991',Country:'USA',Genre:'Thriller',Rating:'18+',Duration:'1h 58m'}},
+    actors:[{name:'Джоди Фостер',role:{ru:'Кларисса Старлинг',en:'Clarice Starling'},icon:'👩‍💼'},{name:'Энтони Хопкинс',role:{ru:'Ганнибал Лектер',en:'Hannibal Lecter'},icon:'🎭'}],
+    reviews:[{name:'Олег С.',date:'22.11.2023',stars:10,text:{ru:'Хопкинс в роли Лектера — лучший злодей в истории кино.',en:'Hopkins as Lecter — the best villain in cinema history.'}}]
+  },
+  igra:{id:'igra',
+    title:{ru:'Игра',en:'The Game'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🧩',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  zodiak:{id:'zodiak',
+    title:{ru:'Зодиак',en:'Zodiac'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'👁',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  korollev:{id:'korollev',
+    title:{ru:'Король Лев',en:'The Lion King'},
+    year:'1994',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 28м',en:'1h 28m'},rating:'8.5',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Семейный','0+'],en:['Animation','Family','0+']},
+    desc:{ru:'Юный лев Симба должен занять место на Скале Прайда после гибели отца.',en:'Young lion Simba must claim his place on Pride Rock after his father dies.'},
+    fullDesc:{ru:'Симба — наследник великого Муфасы. После его гибели Симба вынужден бежать под гнётом вины. Но однажды прошлое призовёт его вернуться.',en:'Simba is heir to the great Mufasa. After his death Simba flees weighed down by guilt. But one day the past will call him to return.'},
+    details:{ru:{Режиссёр:'Роджер Аллерс, Роб Минкофф',Год:'1994',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 28м'},en:{Director:'Roger Allers, Rob Minkoff',Year:'1994',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 28m'}},
+    actors:[{name:'Мэттью Бродерик',role:{ru:'Симба (голос)',en:'Simba (voice)'},icon:'🦁'},{name:'Джереми Айронс',role:{ru:'Шрам (голос)',en:'Scar (voice)'},icon:'😈'},{name:'Джеймс Эрл Джонс',role:{ru:'Муфаса (голос)',en:'Mufasa (voice)'},icon:'👑'}],
+    reviews:[{name:'Катя М.',date:'10.09.2023',stars:10,text:{ru:'До сих пор плачу на сцене с Муфасой.',en:'Still cry at the Mufasa scene.'}}]
+  },
+  frozen:{id:'frozen',
+    title:{ru:'Холодное сердце',en:'Frozen'},
+    year:'2013',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 42м',en:'1h 42m'},rating:'7.4',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Мюзикл','0+'],en:['Animation','Musical','0+']},
+    desc:{ru:'Принцесса Анна ищет сестру Эльзу, чьи силы заморозили королевство.',en:'Princess Anna searches for her sister Elsa whose powers froze the kingdom.'},
+    fullDesc:{ru:'Эльза случайно погружает Эренделл в вечную зиму. Анна идёт на поиски с Кристоффом, его северным оленем Свеном и снеговиком Олафом.',en:'Elsa accidentally plunges Arendelle into eternal winter. Anna sets out with Kristoff, his reindeer Sven and snowman Olaf.'},
+    details:{ru:{Режиссёр:'Крис Бак, Дженнифер Ли',Год:'2013',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 42м'},en:{Director:'Chris Buck, Jennifer Lee',Year:'2013',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 42m'}},
+    actors:[{name:'Кристен Белл',role:{ru:'Анна (голос)',en:'Anna (voice)'},icon:'👸'},{name:'Идина Мензел',role:{ru:'Эльза (голос)',en:'Elsa (voice)'},icon:'❄️'},{name:'Джош Гэд',role:{ru:'Олаф (голос)',en:'Olaf (voice)'},icon:'⛄'}],
+    reviews:[{name:'Лена К.',date:'05.01.2024',stars:9,text:{ru:'Отпусти и забудь — лучшая песня Disney.',en:'Let It Go — the best Disney song.'}}]
+  },
+  nemo:{id:'nemo',
+    title:{ru:'В поисках Немо',en:'Finding Nemo'},
+    year:'2003',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 40м',en:'1h 40m'},rating:'8.2',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Приключения','0+'],en:['Animation','Adventure','0+']},
+    desc:{ru:'Папа-рыба пересекает океан чтобы найти сына в аквариуме дантиста.',en:'Father fish crosses the ocean to find his son in a dentist aquarium.'},
+    fullDesc:{ru:'Рыба-клоун Марлин отправляется в опасное путешествие через океан вместе с забывчивой рыбой Дори — чтобы найти сына Немо.',en:'Clownfish Marlin goes on a dangerous ocean journey with the forgetful Dory — to find his son Nemo.'},
+    details:{ru:{Режиссёр:'Эндрю Стэнтон',Год:'2003',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 40м'},en:{Director:'Andrew Stanton',Year:'2003',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 40m'}},
+    actors:[{name:'Альберт Брукс',role:{ru:'Марлин (голос)',en:'Marlin (voice)'},icon:'🐠'},{name:'Эллен Дедженерес',role:{ru:'Дори (голос)',en:'Dory (voice)'},icon:'🐟'},{name:'Александр Гулд',role:{ru:'Немо (голос)',en:'Nemo (voice)'},icon:'🐡'}],
+    reviews:[{name:'Алиса П.',date:'20.03.2023',stars:10,text:{ru:'Шедевр для всей семьи.',en:'A masterpiece for the whole family.'}}]
+  },
+  walle:{id:'walle',
+    title:{ru:'ВАЛЛ·И',en:'WALL·E'},
+    year:'2008',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 38м',en:'1h 38m'},rating:'8.4',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Фантастика','0+'],en:['Animation','Sci-Fi','0+']},
+    desc:{ru:'Маленький робот ВАЛЛ·И влюбляется в робота ЕВА и отправляется в космос.',en:'Little robot WALL-E falls in love with robot EVE and heads to space.'},
+    fullDesc:{ru:'XXXVI век. Земля покрыта мусором. Одинокий робот ВАЛЛ·И убирает планету. Когда прилетает ЕВА — начинается удивительная история любви среди звёзд.',en:'36th century. Earth is covered in trash. Lonely robot WALL-E cleans the planet. When EVE arrives — an amazing love story begins among the stars.'},
+    details:{ru:{Режиссёр:'Эндрю Стэнтон',Год:'2008',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 38м'},en:{Director:'Andrew Stanton',Year:'2008',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 38m'}},
+    actors:[{name:'Бен Бёрт',role:{ru:'ВАЛЛ·И (голос)',en:'WALL-E (voice)'},icon:'🤖'},{name:'Эллисса Найт',role:{ru:'ЕВА (голос)',en:'EVE (voice)'},icon:'🤍'}],
+    reviews:[{name:'Тимур А.',date:'14.02.2024',stars:10,text:{ru:'Лучший фильм Pixar. Без слов о любви — и всё понятно.',en:'Best Pixar film. No words about love — and everything is clear.'}}]
+  },
+  zootopia:{id:'zootopia',
+    title:{ru:'Зверополис',en:'Zootopia'},
+    year:'2016',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 48м',en:'1h 48m'},rating:'8.0',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Детектив','0+'],en:['Animation','Detective','0+']},
+    desc:{ru:'Детектив-кролик и хитрый лис расследуют таинственное исчезновение.',en:'Rabbit detective and clever fox investigate a mysterious disappearance.'},
+    fullDesc:{ru:'Зайка Джуди Хопс — первый в городе кролик-полицейский. С лисом Ником она расследует заговор, угрожающий мирному сосуществованию всех животных.',en:'Bunny Judy Hopps is the city first rabbit police officer. With fox Nick she investigates a conspiracy threatening the peaceful coexistence of all animals.'},
+    details:{ru:{Режиссёр:'Байрон Говард, Рич Мур',Год:'2016',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 48м'},en:{Director:'Byron Howard, Rich Moore',Year:'2016',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 48m'}},
+    actors:[{name:'Джинниф Гудвин',role:{ru:'Джуди (голос)',en:'Judy (voice)'},icon:'🐰'},{name:'Джейсон Бейтман',role:{ru:'Ник (голос)',en:'Nick (voice)'},icon:'🦊'}],
+    reviews:[{name:'Даша Н.',date:'08.03.2023',stars:9,text:{ru:'Умный мультфильм с важным посланием для всех.',en:'A smart animated film with an important message for everyone.'}}]
+  },
+  kungfu:{id:'kungfu',
+    title:{ru:'Кунг-фу Панда',en:'Kung Fu Panda'},
+    year:'2008',genre:{ru:'Мультфильм',en:'Animation'},duration:{ru:'1ч 32м',en:'1h 32m'},rating:'7.6',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультфильм','Боевик','0+'],en:['Animation','Action','0+']},
+    desc:{ru:'Неуклюжий панда По неожиданно становится Воином Дракона.',en:'Clumsy panda Po unexpectedly becomes the Dragon Warrior.'},
+    fullDesc:{ru:'По — толстый панда-мечтатель, работающий в лапшичной лавке. Судьба делает его Воином Дракона и ему предстоит победить злодея Тай Лунга.',en:'Po is a chubby dreamer panda working in a noodle shop. Fate makes him the Dragon Warrior and he must defeat villain Tai Lung.'},
+    details:{ru:{Режиссёр:'Марк Осборн, Джон Стивенсон',Год:'2008',Страна:'США',Жанр:'Мультфильм',Возраст:'0+',Длительность:'1ч 32м'},en:{Director:'Mark Osborne, John Stevenson',Year:'2008',Country:'USA',Genre:'Animation',Rating:'0+',Duration:'1h 32m'}},
+    actors:[{name:'Джек Блэк',role:{ru:'По (голос)',en:'Po (voice)'},icon:'🐼'},{name:'Дастин Хоффман',role:{ru:'Шифу (голос)',en:'Shifu (voice)'},icon:'🐭'},{name:'Анджелина Джоли',role:{ru:'Тигрица (голос)',en:'Tigress (voice)'},icon:'🐯'}],
+    reviews:[{name:'Рома Г.',date:'01.06.2023',stars:8,text:{ru:'Не существует секретного ингредиента — лучший урок в кино.',en:'There is no secret ingredient — the best lesson in cinema.'}}]
+  },
+  masha:{id:'masha',
+    title:{ru:'Маша и Медведь',en:'Masha and the Bear'},
+    year:'2009',genre:{ru:'Мультсериал',en:'Animated Series'},duration:{ru:'6 мин/эп.',en:'6 min/ep'},rating:'8.0',
+    poster:'',e:'🎬',
+    tags:{ru:['Мультсериал','0+'],en:['Animated Series','0+']},
+    desc:{ru:'Озорная девочка Маша и добродушный Медведь — лучшие друзья в лесу.',en:'Mischievous Masha and good-natured Bear — best friends in the forest.'},
+    fullDesc:{ru:'Маша — неугомонная девочка, живущая в лесу. Медведь — бывший цирковой артист. Каждый день они попадают в новые невероятные приключения.',en:'Masha is an energetic girl in the forest. Bear is a former circus performer. Every day they get into new incredible adventures.'},
+    details:{ru:{Студия:'Анимаккорд',Год:'с 2009',Страна:'Россия',Жанр:'Мультсериал',Возраст:'0+',Длительность:'6 мин/эп.'},en:{Studio:'Animaccord',Year:'since 2009',Country:'Russia',Genre:'Animated Series',Rating:'0+',Duration:'6 min/ep'}},
+    actors:[{name:'Алина Кукушкина',role:{ru:'Маша (голос)',en:'Masha (voice)'},icon:'👧'},{name:'Сергей Фомин',role:{ru:'Медведь (голос)',en:'Bear (voice)'},icon:'🐻'}],
+    reviews:[{name:'Мама Ани',date:'01.09.2023',stars:10,text:{ru:'Дочка смотрит каждый день! Безопасно и весело.',en:'My daughter watches every day! Safe and fun.'}}]
+  },
+  thomas:{id:'thomas',
+    title:{ru:'Паровозик Томас',en:'Thomas the Tank Engine'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🚂',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  planetazemla:{id:'planetazemla',
+    title:{ru:'Планета Земля',en:'Planet Earth'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🌍',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  blueplanet:{id:'blueplanet',
+    title:{ru:'Голубая планета',en:'Blue Planet'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🦈',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  apollo11:{id:'apollo11',
+    title:{ru:'Аполлон 11',en:'Apollo 11'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🚀',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  cosmos:{id:'cosmos',
+    title:{ru:'Cosmos',en:'Cosmos'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🌌',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  nashaplaneta:{id:'nashaplaneta',
+    title:{ru:'Наша планета',en:'Our Planet'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🦋',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  chefstable:{id:'chefstable',
+    title:{ru:"Шеф-повар",en:"Chef's Table"},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🍕',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  cskasp:{id:'cskasp',
+    title:{ru:'ЦСКА — Спартак LIVE',en:'CSKA — Spartak LIVE'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'⚽',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  cskasp:{id:'cskasp',
+    title:{ru:'ЦСКА — Спартак',en:'CSKA — Spartak'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'⚽',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  khl:{id:'khl',
+    title:{ru:'КХЛ: СКА — ЦСКА',en:'KHL: SKA — CSKA'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🏒',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  wimbledon:{id:'wimbledon',
+    title:{ru:'Уимблдон 2025',en:'Wimbledon 2025'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🎾',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  usyk:{id:'usyk',
+    title:{ru:'Усик — Фьюри',en:'Usyk — Fury'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🥊',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  f1:{id:'f1',
+    title:{ru:'Формула 1 2024',en:'Formula 1 2024'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🏎',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  },
+  nba:{id:'nba',
+    title:{ru:'НБА Финал 2024',en:'NBA Finals 2024'},
+    year:'—',genre:{ru:'—',en:'—'},duration:{ru:'—',en:'—'},rating:'—',
+    poster:'',e:'🏀',
+    tags:{ru:[],en:[]},
+    desc:{ru:'Описание недоступно.',en:'No description available.'},
+    fullDesc:{ru:'Описание недоступно.',en:'No description available.'},
+    details:{ru:{},en:{}},
+    actors:[],reviews:[]
+  }
+};
+
+// ══ FILM LIST (catalog/search) ══
+const FILMS_LIST = {
+  'all':[
+    {id:'master',e:'🎭',t:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},m:{ru:'2024 · Драма',en:'2024 · Drama'},r:'★ 8.2',poster:''},
+    {id:'slovo',e:'⚔️',t:{ru:'Слово пацана',en:'Word of a Boy'},m:{ru:'2023 · Сериал',en:'2023 · Series'},r:'★ 8.8',poster:''},
+    {id:'dune',e:'🚀',t:{ru:'Дюна: Часть 2',en:'Dune: Part Two'},m:{ru:'2024 · Фантастика',en:'2024 · Sci-Fi'},r:'★ 8.5',poster:''},
+    {id:'sherlock',e:'🔍',t:{ru:'Шерлок',en:'Sherlock'},m:{ru:'2010 · Детектив',en:'2010 · Detective'},r:'★ 9.1',poster:''},
+    {id:'got',e:'👑',t:{ru:'Игра Престолов',en:'Game of Thrones'},m:{ru:'2011 · Фэнтези',en:'2011 · Fantasy'},r:'★ 9.2',poster:''},
+    {id:'breaking',e:'🧪',t:{ru:'Во все тяжкие',en:'Breaking Bad'},m:{ru:'2008 · Криминал',en:'2008 · Crime'},r:'★ 9.5',poster:''},
+    {id:'holop2',e:'😂',t:{ru:'Холоп 2',en:'Serf 2'},m:{ru:'2024 · Комедия',en:'2024 · Comedy'},r:'★ 7.1',poster:''},
+    {id:'vyzov',e:'🌊',t:{ru:'Вызов',en:'The Challenge'},m:{ru:'2023 · Драма',en:'2023 · Drama'},r:'★ 7.0',poster:''},
+    {id:'majorgrom',e:'🦸',t:{ru:'Майор Гром',en:'Major Thunder'},m:{ru:'2021 · Боевик',en:'2021 · Action'},r:'★ 7.4',poster:''},
+    {id:'masha',e:'🧸',t:{ru:'Маша и Медведь',en:'Masha and the Bear'},m:{ru:'Мультфильм · 0+',en:'Animation · 0+'},r:'★ 8.0',poster:''},
+    {id:'avatar2',e:'💙',t:{ru:'Аватар 2',en:'Avatar 2'},m:{ru:'2022 · Фэнтези',en:'2022 · Fantasy'},r:'★ 7.6',poster:''},
+    {id:'sem',e:'🔪',t:{ru:'Семь',en:'Se7en'},m:{ru:'1995 · Триллер',en:'1995 · Thriller'},r:'★ 8.6',poster:''},
+    {id:'nachalo',e:'🌀',t:{ru:'Начало',en:'Inception'},m:{ru:'2010 · Триллер',en:'2010 · Thriller'},r:'★ 8.8',poster:''},
+    {id:'gladiator',e:'🗡',t:{ru:'Гладиатор',en:'Gladiator'},m:{ru:'2000 · История',en:'2000 · Historical'},r:'★ 8.5',poster:''},
+    {id:'siyanie',e:'🔦',t:{ru:'Сияние',en:'The Shining'},m:{ru:'1980 · Хоррор',en:'1980 · Horror'},r:'★ 8.4',poster:''},
+    {id:'korollev',e:'🦁',t:{ru:'Король Лев',en:'The Lion King'},m:{ru:'1994 · Мультфильм',en:'1994 · Animation'},r:'★ 8.5',poster:''},
+    {id:'planetazemla',e:'🌍',t:{ru:'Планета Земля',en:'Planet Earth'},m:{ru:'2006 · Документальный',en:'2006 · Documentary'},r:'★ 9.4',poster:''},
+    {id:'cskasp',e:'⚽',t:{ru:'ЦСКА — Спартак',en:'CSKA — Spartak'},m:{ru:'Спорт · LIVE',en:'Sports · LIVE'},r:'🔴 LIVE',poster:''},
+  ],
+  'new':[
+    {id:'dune',e:'🚀',t:{ru:'Дюна: Часть 2',en:'Dune: Part Two'},m:{ru:'2024 · Фантастика',en:'2024 · Sci-Fi'},r:'★ 8.5',poster:''},
+    {id:'master',e:'🎭',t:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},m:{ru:'2024 · Драма',en:'2024 · Drama'},r:'★ 8.2',poster:''},
+    {id:'slovo',e:'⚔️',t:{ru:'Слово пацана',en:'Word of a Boy'},m:{ru:'2023 · Сериал',en:'2023 · Series'},r:'★ 8.8',poster:''},
+    {id:'holop2',e:'😂',t:{ru:'Холоп 2',en:'Serf 2'},m:{ru:'2024 · Комедия',en:'2024 · Comedy'},r:'★ 7.1',poster:''},
+    {id:'vyzov',e:'🌊',t:{ru:'Вызов',en:'The Challenge'},m:{ru:'2023 · Драма',en:'2023 · Drama'},r:'★ 7.0',poster:''},
+    {id:'majorgrom',e:'🦸',t:{ru:'Майор Гром',en:'Major Thunder'},m:{ru:'2021 · Боевик',en:'2021 · Action'},r:'★ 7.4',poster:''},
+  ],
+  'action':[
+    {id:'majorgrom',e:'🦸',t:{ru:'Майор Гром',en:'Major Thunder'},m:{ru:'2021 · Боевик',en:'2021 · Action'},r:'★ 7.4',poster:''},
+    {id:'terminator2',e:'💣',t:{ru:'Терминатор 2',en:'Terminator 2'},m:{ru:'1991 · Боевик',en:'1991 · Action'},r:'★ 8.6',poster:''},
+    {id:'johnwick4',e:'🔫',t:{ru:'Джон Уик 4',en:'John Wick 4'},m:{ru:'2023 · Боевик',en:'2023 · Action'},r:'★ 7.8',poster:''},
+    {id:'avengers',e:'⚡',t:{ru:'Мстители: Финал',en:'Avengers: Endgame'},m:{ru:'2019 · Боевик',en:'2019 · Action'},r:'★ 8.4',poster:''},
+    {id:'gladiator',e:'🗡',t:{ru:'Гладиатор',en:'Gladiator'},m:{ru:'2000 · История',en:'2000 · Historical'},r:'★ 8.5',poster:''},
+    {id:'rocky',e:'🥊',t:{ru:'Рокки',en:'Rocky'},m:{ru:'1976 · Спорт',en:'1976 · Sports'},r:'★ 8.1',poster:''},
+  ],
+  'comedy':[
+    {id:'holop2',e:'😂',t:{ru:'Холоп 2',en:'Serf 2'},m:{ru:'2024 · Комедия',en:'2024 · Comedy'},r:'★ 7.1',poster:''},
+    {id:'ivanvas',e:'🎉',t:{ru:'Иван Васильевич',en:'Ivan Vasilievich'},m:{ru:'1973 · Комедия',en:'1973 · Comedy'},r:'★ 8.6',poster:''},
+    {id:'operatsiya',e:'🤡',t:{ru:'Операция Ы',en:'Operation Y'},m:{ru:'1965 · Комедия',en:'1965 · Comedy'},r:'★ 8.7',poster:''},
+    {id:'bruka',e:'🍾',t:{ru:'Бриллиантовая рука',en:'Diamond Arm'},m:{ru:'1969 · Комедия',en:'1969 · Comedy'},r:'★ 8.8',poster:''},
+    {id:'odindoma',e:'🤣',t:{ru:'Один дома',en:'Home Alone'},m:{ru:'1990 · Комедия',en:'1990 · Comedy'},r:'★ 7.7',poster:''},
+    {id:'kavkaz',e:'🎭',t:{ru:'Кавказская пленница',en:'Kidnapping Caucasian Style'},m:{ru:'1967 · Комедия',en:'1967 · Comedy'},r:'★ 8.6',poster:''},
+  ],
+  'drama':[
+    {id:'master',e:'🎭',t:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},m:{ru:'2024 · Драма',en:'2024 · Drama'},r:'★ 8.2',poster:''},
+    {id:'nelyubov',e:'💔',t:{ru:'Нелюбовь',en:'Loveless'},m:{ru:'2017 · Драма',en:'2017 · Drama'},r:'★ 7.1',poster:''},
+    {id:'leviafan',e:'🏔',t:{ru:'Левиафан',en:'Leviathan'},m:{ru:'2014 · Драма',en:'2014 · Drama'},r:'★ 7.6',poster:''},
+    {id:'vyzov',e:'🌊',t:{ru:'Вызов',en:'The Challenge'},m:{ru:'2023 · Драма',en:'2023 · Drama'},r:'★ 7.0',poster:''},
+    {id:'voynaimir',e:'🕊',t:{ru:'Война и мир',en:'War and Peace'},m:{ru:'1966 · Эпос',en:'1966 · Epic'},r:'★ 8.2',poster:''},
+    {id:'admiral',e:'⚓',t:{ru:'Адмиралъ',en:'Admiral'},m:{ru:'2008 · История',en:'2008 · Historical'},r:'★ 7.2',poster:''},
+  ],
+  'animation':[
+    {id:'masha',e:'🧸',t:{ru:'Маша и Медведь',en:'Masha and the Bear'},m:{ru:'Мультфильм · 0+',en:'Animation · 0+'},r:'★ 8.0',poster:''},
+    {id:'korollev',e:'🦁',t:{ru:'Король Лев',en:'The Lion King'},m:{ru:'1994 · Мультфильм',en:'1994 · Animation'},r:'★ 8.5',poster:''},
+    {id:'frozen',e:'🧊',t:{ru:'Холодное сердце',en:'Frozen'},m:{ru:'2013 · Мультфильм',en:'2013 · Animation'},r:'★ 7.4',poster:''},
+    {id:'nemo',e:'🐠',t:{ru:'В поисках Немо',en:'Finding Nemo'},m:{ru:'2003 · Мультфильм',en:'2003 · Animation'},r:'★ 8.2',poster:''},
+    {id:'walle',e:'🤖',t:{ru:'ВАЛЛ·И',en:'WALL·E'},m:{ru:'2008 · Мультфильм',en:'2008 · Animation'},r:'★ 8.4',poster:''},
+    {id:'zootopia',e:'🦊',t:{ru:'Зверополис',en:'Zootopia'},m:{ru:'2016 · Мультфильм',en:'2016 · Animation'},r:'★ 8.0',poster:''},
+  ],
+  'docs':[
+    {id:'planetazemla',e:'🌍',t:{ru:'Планета Земля',en:'Planet Earth'},m:{ru:'2006 · Природа',en:'2006 · Nature'},r:'★ 9.4',poster:''},
+    {id:'blueplanet',e:'🦈',t:{ru:'Голубая планета',en:'Blue Planet'},m:{ru:'2001 · Природа',en:'2001 · Nature'},r:'★ 9.1',poster:''},
+    {id:'apollo11',e:'🚀',t:{ru:'Аполлон 11',en:'Apollo 11'},m:{ru:'2019 · История',en:'2019 · History'},r:'★ 8.2',poster:''},
+    {id:'cosmos',e:'🌌',t:{ru:'Cosmos',en:'Cosmos'},m:{ru:'1980 · Наука',en:'1980 · Science'},r:'★ 9.2',poster:''},
+    {id:'nashaplaneta',e:'🦋',t:{ru:'Наша планета',en:'Our Planet'},m:{ru:'2019 · Природа',en:'2019 · Nature'},r:'★ 8.8',poster:''},
+    {id:'chefstable',e:'🍕',t:{ru:'Шеф-повар',en:'Chef\'s Table'},m:{ru:'2021 · Кулинария',en:'2021 · Culinary'},r:'★ 7.8',poster:''},
+  ],
+  'sport':[
+    {id:'cskasp',e:'⚽',t:{ru:'ЦСКА — Спартак LIVE',en:'CSKA — Spartak LIVE'},m:{ru:'Прямой эфир',en:'Live broadcast'},r:'🔴 LIVE',poster:''},
+    {id:'khl',e:'🏒',t:{ru:'КХЛ: СКА — ЦСКА',en:'KHL: SKA — CSKA'},m:{ru:'Хоккей · Завтра',en:'Hockey · Tomorrow'},r:'📅',poster:''},
+    {id:'wimbledon',e:'🎾',t:{ru:'Уимблдон 2025',en:'Wimbledon 2025'},m:{ru:'Теннис',en:'Tennis'},r:'★ 8.8',poster:''},
+    {id:'usyk',e:'🥊',t:{ru:'Усик — Фьюри',en:'Usyk — Fury'},m:{ru:'2024 · Бокс',en:'2024 · Boxing'},r:'★ 8.1',poster:''},
+    {id:'f1',e:'🏎',t:{ru:'Формула 1 2024',en:'Formula 1 2024'},m:{ru:'Гонки',en:'Racing'},r:'★ 8.3',poster:''},
+    {id:'nba',e:'🏀',t:{ru:'НБА Финал 2024',en:'NBA Finals 2024'},m:{ru:'Баскетбол',en:'Basketball'},r:'★ 7.9',poster:''},
+  ],
+  'series':[
+    {id:'slovo',e:'⚔️',t:{ru:'Слово пацана',en:'Word of a Boy'},m:{ru:'2023 · 8 серий',en:'2023 · 8 episodes'},r:'★ 8.8',poster:''},
+    {id:'got',e:'👑',t:{ru:'Игра Престолов',en:'Game of Thrones'},m:{ru:'2011 · 8 сезонов',en:'2011 · 8 seasons'},r:'★ 9.2',poster:''},
+    {id:'breaking',e:'🧪',t:{ru:'Во все тяжкие',en:'Breaking Bad'},m:{ru:'2008 · 5 сезонов',en:'2008 · 5 seasons'},r:'★ 9.5',poster:''},
+    {id:'sherlock',e:'🔍',t:{ru:'Шерлок',en:'Sherlock'},m:{ru:'2010 · 4 сезона',en:'2010 · 4 seasons'},r:'★ 9.1',poster:''},
+    {id:'blackmirror',e:'🌆',t:{ru:'Чёрное зеркало',en:'Black Mirror'},m:{ru:'2011 · Антология',en:'2011 · Anthology'},r:'★ 8.8',poster:''},
+    {id:'shkola',e:'🏫',t:{ru:'Школа',en:'School'},m:{ru:'2010 · Драма',en:'2010 · Drama'},r:'★ 7.4',poster:''},
+  ],
+  'thriller':[
+    {id:'sem',e:'🔪',t:{ru:'Семь',en:'Se7en'},m:{ru:'1995 · Триллер',en:'1995 · Thriller'},r:'★ 8.6',poster:''},
+    {id:'molchanie',e:'🕵️',t:{ru:'Молчание ягнят',en:'Silence of the Lambs'},m:{ru:'1991 · Триллер',en:'1991 · Thriller'},r:'★ 8.6',poster:''},
+    {id:'nachalo',e:'🌀',t:{ru:'Начало',en:'Inception'},m:{ru:'2010 · Триллер',en:'2010 · Thriller'},r:'★ 8.8',poster:''},
+    {id:'siyanie',e:'🔦',t:{ru:'Сияние',en:'The Shining'},m:{ru:'1980 · Хоррор',en:'1980 · Horror'},r:'★ 8.4',poster:''},
+    {id:'igra',e:'🧩',t:{ru:'Игра',en:'The Game'},m:{ru:'1997 · Триллер',en:'1997 · Thriller'},r:'★ 7.7',poster:''},
+    {id:'zodiak',e:'👁',t:{ru:'Зодиак',en:'Zodiac'},m:{ru:'2007 · Триллер',en:'2007 · Thriller'},r:'★ 7.7',poster:''},
+  ],
+  'films':[
+    {id:'dune',e:'🚀',t:{ru:'Дюна: Часть 2',en:'Dune: Part Two'},m:{ru:'2024 · Фантастика',en:'2024 · Sci-Fi'},r:'★ 8.5',poster:''},
+    {id:'master',e:'🎭',t:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},m:{ru:'2024 · Драма',en:'2024 · Drama'},r:'★ 8.2',poster:''},
+    {id:'nachalo',e:'🌀',t:{ru:'Начало',en:'Inception'},m:{ru:'2010 · Триллер',en:'2010 · Thriller'},r:'★ 8.8',poster:''},
+    {id:'gladiator',e:'🗡',t:{ru:'Гладиатор',en:'Gladiator'},m:{ru:'2000 · История',en:'2000 · Historical'},r:'★ 8.5',poster:''},
+    {id:'avatar2',e:'💙',t:{ru:'Аватар 2',en:'Avatar 2'},m:{ru:'2022 · Фэнтези',en:'2022 · Fantasy'},r:'★ 7.6',poster:''},
+    {id:'sem',e:'🔪',t:{ru:'Семь',en:'Se7en'},m:{ru:'1995 · Триллер',en:'1995 · Thriller'},r:'★ 8.6',poster:''},
+    {id:'holop2',e:'😂',t:{ru:'Холоп 2',en:'Serf 2'},m:{ru:'2024 · Комедия',en:'2024 · Comedy'},r:'★ 7.1',poster:''},
+    {id:'bruka',e:'🍾',t:{ru:'Бриллиантовая рука',en:'Diamond Arm'},m:{ru:'1969 · Комедия',en:'1969 · Comedy'},r:'★ 8.8',poster:''},
+    {id:'korollev',e:'🦁',t:{ru:'Король Лев',en:'The Lion King'},m:{ru:'1994 · Мультфильм',en:'1994 · Animation'},r:'★ 8.5',poster:''},
+    {id:'siyanie',e:'🔦',t:{ru:'Сияние',en:'The Shining'},m:{ru:'1980 · Хоррор',en:'1980 · Horror'},r:'★ 8.4',poster:''},
+    {id:'terminator2',e:'💣',t:{ru:'Терминатор 2',en:'Terminator 2'},m:{ru:'1991 · Боевик',en:'1991 · Action'},r:'★ 8.6',poster:''},
+    {id:'ivanvas',e:'🎉',t:{ru:'Иван Васильевич',en:'Ivan Vasilievich'},m:{ru:'1973 · Комедия',en:'1973 · Comedy'},r:'★ 8.6',poster:''},
+  ],
+  'kids':[
+    {id:'masha',e:'🧸',t:{ru:'Маша и Медведь',en:'Masha and the Bear'},m:{ru:'Сериал · 0+',en:'Series · 0+'},r:'★ 8.0',poster:''},
+    {id:'nemo',e:'🐠',t:{ru:'В поисках Немо',en:'Finding Nemo'},m:{ru:'2003 · Мультфильм',en:'2003 · Animation'},r:'★ 8.2',poster:''},
+    {id:'korollev',e:'🦁',t:{ru:'Король Лев',en:'The Lion King'},m:{ru:'1994 · Мультфильм',en:'1994 · Animation'},r:'★ 8.5',poster:''},
+    {id:'kungfu',e:'🐼',t:{ru:'Кунг-фу Панда',en:'Kung Fu Panda'},m:{ru:'2008 · Мультфильм',en:'2008 · Animation'},r:'★ 7.6',poster:''},
+    {id:'frozen',e:'🧊',t:{ru:'Холодное сердце',en:'Frozen'},m:{ru:'2013 · Мультфильм',en:'2013 · Animation'},r:'★ 7.4',poster:''},
+    {id:'walle',e:'🤖',t:{ru:'ВАЛЛ·И',en:'WALL·E'},m:{ru:'2008 · Мультфильм',en:'2008 · Animation'},r:'★ 8.4',poster:''},
+    {id:'zootopia',e:'🦊',t:{ru:'Зверополис',en:'Zootopia'},m:{ru:'2016 · Мультфильм',en:'2016 · Animation'},r:'★ 8.0',poster:''},
+    {id:'thomas',e:'🚂',t:{ru:'Паровозик Томас',en:'Thomas the Tank Engine'},m:{ru:'Сериал · 0+',en:'Series · 0+'},r:'★ 7.5',poster:''},
+  ]
+};
+const ALL_FILMS = Object.values(FILMS_LIST).flat().filter((v,i,a)=>a.findIndex(x=>x.t.ru===v.t.ru)===i);
+
+const CAT_KEYS=['all','new','action','comedy','drama','animation','docs','sport','series','thriller'];
+const CATALOG_CAT_KEYS=['all','films','new','action','comedy','drama','animation','docs','sport','series','thriller','kids'];
+
+// ══ NAV ══
+let _hist=['s-tv'],_obShown=false,_curFilmId='master',_searchFilter='all',_curCat='all',_curCatalogCat='all';
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id);
+  if(el){el.classList.add('active');el.classList.add('fade-in');}
+  if(_hist[_hist.length-1]!==id)_hist.push(id);
+  window.scrollTo(0,0);
+  if(id==='s-home'&&!_obShown){_obShown=true;setTimeout(()=>{document.getElementById('onboarding').style.display='flex';},1000);}
+  if(id==='s-search'){_searchFilter='all';renderSearch('');}
+  if(id==='s-home'){buildHomeCats();renderGenre(_curCat);buildContinueRow();}
+  if(id==='s-catalog'){buildCatalogFilters();renderCatalog(_curCatalogCat);}
+  if(id==='s-favorites')buildFavGrid();
+  if(id==='s-history')buildHistoryList();
+}
+function goBack(){if(_hist.length>1){_hist.pop();const p=_hist[_hist.length-1];_hist.pop();go(p);}else go('s-home');}
+
+// TV
+function showUnavail(n){
+  safeSet('unavailTxt', L('unavail_text'));
+  const _um=document.getElementById('unavailModal'); if(_um) _um.style.display='flex';
+}
+function hideUnavail(){
+  const m=document.getElementById('unavailModal');
+  if(m) m.style.display='none';
+}
+function updateClock(){const n=new Date(),h=String(n.getHours()).padStart(2,'0'),m=String(n.getMinutes()).padStart(2,'0');const el=document.getElementById('tvClock');if(el)el.textContent=h+':'+m;}
+updateClock();setInterval(updateClock,30000);
+
+// ONBOARDING
+function closeOB(gs){
+  const ob=document.getElementById('onboarding');
+  if(ob) ob.style.display='none';
+  if(gs) go('s-search');
+}
+
+// CARDS
+function ft(obj){return typeof obj==='object'?(obj[LANG]||obj.ru):obj;}
+const FILM_POSTERS = {
+  'Мастер и Маргарита': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10812607/91d89bda-cc8d-4f20-8ebc-ec04f10ce7c6/300x450',
+  'The Master and Margarita': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10812607/91d89bda-cc8d-4f20-8ebc-ec04f10ce7c6/300x450',
+  'Слово пацана': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10809116/c1eec5f4-ae49-41cc-aea2-d8995486a23e/300x450',
+  'Word of a Boy': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10809116/c1eec5f4-ae49-41cc-aea2-d8995486a23e/300x450',
+  'Холоп 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10592371/ab964fb1-c8d1-4a78-8d49-c754d756d488/300x450',
+  'Serf 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10592371/ab964fb1-c8d1-4a78-8d49-c754d756d488/300x450',
+  'Вызов': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10835644/12a8b128-cef9-49bc-b572-b35d7d4fe5b1/300x450',
+  'The Challenge': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10835644/12a8b128-cef9-49bc-b572-b35d7d4fe5b1/300x450',
+  'Майор Гром': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10703859/a381cbfa-8dd6-4919-b091-e774ac85c74a/300x450',
+  'Major Thunder': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10703859/a381cbfa-8dd6-4919-b091-e774ac85c74a/300x450',
+  'Нелюбовь': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/3eb163f9-3251-466d-8574-d0e6203727e6/300x450',
+  'Loveless': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/3eb163f9-3251-466d-8574-d0e6203727e6/300x450',
+  'Левиафан': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4716873/363b60fe-585f-4a71-890e-919e71a89ae1/300x450',
+  'Leviathan': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4716873/363b60fe-585f-4a71-890e-919e71a89ae1/300x450',
+  'Война и мир': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4303601/10e216b8-b29c-4d12-a0cc-381cf3fbab64/300x450',
+  'War and Peace': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4303601/10e216b8-b29c-4d12-a0cc-381cf3fbab64/300x450',
+  'Адмиралъ': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/353c169b-3391-4c08-8ec4-af9623720c59/300x450',
+  'Admiral': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/353c169b-3391-4c08-8ec4-af9623720c59/300x450',
+  'Иван Васильевич': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/a7ef44b8-1983-4992-a889-da6f87a3f559/300x450',
+  'Ivan Vasilievich': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/a7ef44b8-1983-4992-a889-da6f87a3f559/300x450',
+  'Операция Ы': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/ccd69a69-7405-4b41-89a8-60dd6dc2a3ee/300x450',
+  'Operation Y': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/ccd69a69-7405-4b41-89a8-60dd6dc2a3ee/300x450',
+  'Кавказская пленница': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4483445/d681bcf8-0fc2-4f2e-a772-0a01920e62b3/300x450',
+  'Kidnapping Caucasian Style': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4483445/d681bcf8-0fc2-4f2e-a772-0a01920e62b3/300x450',
+  'Бриллиантовая рука': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10893610/32ef92db-5cbb-426d-acf9-2327b695edf8/300x450',
+  'Diamond Arm': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10893610/32ef92db-5cbb-426d-acf9-2327b695edf8/300x450',
+  'Дюна: Часть 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10953618/20f20a76-e8d8-4b04-9041-1f044d87e55a/300x450',
+  'Dune: Part Two': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10953618/20f20a76-e8d8-4b04-9041-1f044d87e55a/300x450',
+  'Начало': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/8ab9a119-dd74-44f0-baec-0629797483d7/300x450',
+  'Inception': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/8ab9a119-dd74-44f0-baec-0629797483d7/300x450',
+  'Гладиатор': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/7c3460dc-344d-433f-8220-f18d86c8397d/300x450',
+  'Gladiator': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/7c3460dc-344d-433f-8220-f18d86c8397d/300x450',
+  'Семь': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1773646/9ce4716c-dd27-435b-8a3a-f833ad859052/300x450',
+  'Se7en': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1773646/9ce4716c-dd27-435b-8a3a-f833ad859052/300x450',
+  'Сияние': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/49ba5c05-249b-4387-8418-833aa54bb376/300x450',
+  'The Shining': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/49ba5c05-249b-4387-8418-833aa54bb376/300x450',
+  'Терминатор 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10893610/2dd14742-f241-42ca-9db4-331e3a483c50/300x450',
+  'Terminator 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10893610/2dd14742-f241-42ca-9db4-331e3a483c50/300x450',
+  'Джон Уик 4': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/62c1301b-c913-4b3c-af87-74934ae1ec93/300x450',
+  'John Wick 4': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/62c1301b-c913-4b3c-af87-74934ae1ec93/300x450',
+  'Мстители: Финал': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/ae22f153-9715-41bb-adb4-f648b3e16092/300x450',
+  'Avengers: Endgame': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/ae22f153-9715-41bb-adb4-f648b3e16092/300x450',
+  'Один дома': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/022a58e3-5b9b-411b-bfb3-09fedb700401/300x450',
+  'Home Alone': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/022a58e3-5b9b-411b-bfb3-09fedb700401/300x450',
+  'Рокки': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/2ec74380-dda9-4f1c-a228-1475061a5152/300x450',
+  'Rocky': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/2ec74380-dda9-4f1c-a228-1475061a5152/300x450',
+  'Аватар 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10768063/035e9573-0377-43b2-b129-c3362bdf36ef/300x450',
+  'Avatar 2': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10768063/035e9573-0377-43b2-b129-c3362bdf36ef/300x450',
+  'Шерлок': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/f28c1ea2-47b0-49d5-b11c-9608744f0233/300x450',
+  'Sherlock': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/f28c1ea2-47b0-49d5-b11c-9608744f0233/300x450',
+  'Игра Престолов': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1777765/dd78edfd-6a1f-486c-9a86-6acbca940418/300x450',
+  'Game of Thrones': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1777765/dd78edfd-6a1f-486c-9a86-6acbca940418/300x450',
+  'Во все тяжкие': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/fb35416f-3b0d-4b96-bc65-cf6923f9e329/300x450',
+  'Breaking Bad': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/fb35416f-3b0d-4b96-bc65-cf6923f9e329/300x450',
+  'Чёрное зеркало': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1898899/36737195-6026-4310-be80-5545d7d22447/300x450',
+  'Black Mirror': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1898899/36737195-6026-4310-be80-5545d7d22447/300x450',
+  'Король Лев': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1704946/60aa1abc-b754-4817-ad9c-0bcda427a12b/300x450',
+  'The Lion King': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1704946/60aa1abc-b754-4817-ad9c-0bcda427a12b/300x450',
+  'Холодное сердце': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/efa923ca-2007-4a79-b759-377fc1a5664f/300x450',
+  'Frozen': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/efa923ca-2007-4a79-b759-377fc1a5664f/300x450',
+  'В поисках Немо': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/58e6b27d-a443-4ca7-a90f-a6fa968dfe25/300x450',
+  'Finding Nemo': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/58e6b27d-a443-4ca7-a90f-a6fa968dfe25/300x450',
+  'ВАЛЛ·И': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/146b1b20-347b-4b6a-98c8-fdc2c75495cb/300x450',
+  'WALL·E': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/146b1b20-347b-4b6a-98c8-fdc2c75495cb/300x450',
+  'Зверополис': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4716873/893bba73-3105-4944-8d18-a38f929f2759/300x450',
+  'Zootopia': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4716873/893bba73-3105-4944-8d18-a38f929f2759/300x450',
+  'Кунг-фу Панда': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/a9c4698d-7eea-4fe8-8624-4c536c09f7fd/300x450',
+  'Kung Fu Panda': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/a9c4698d-7eea-4fe8-8624-4c536c09f7fd/300x450',
+  'Маша и Медведь': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10671298/95af45f4-8d72-4972-83d8-5738cade1cb7/300x450',
+  'Masha and the Bear': 'https://avatars.mds.yandex.net/get-kinopoisk-image/10671298/95af45f4-8d72-4972-83d8-5738cade1cb7/300x450',
+  'Планета Земля': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/3bf6510a-a1de-467c-bf40-9362ba27f1ec/300x450',
+  'Planet Earth': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/3bf6510a-a1de-467c-bf40-9362ba27f1ec/300x450',
+  'Голубая планета': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/506f22d0-d1ee-4c61-bce0-45e24d10d902/300x450',
+  'Blue Planet': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/506f22d0-d1ee-4c61-bce0-45e24d10d902/300x450',
+  'Аполлон 11': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/181f57ec-fbef-4ebb-9af9-46ca8ecee79b/300x450',
+  'Apollo 11': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/181f57ec-fbef-4ebb-9af9-46ca8ecee79b/300x450',
+  'Наша планета': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/256d67d7-c145-4451-be57-98d898783371/300x450',
+  'Our Planet': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/256d67d7-c145-4451-be57-98d898783371/300x450',
+  'Cosmos': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/e870e17f-fa50-4587-8746-3fa286e2e307/300x450',
+  'Шеф-повар': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/a447e4b9-4a71-4406-b6e9-9b5daa39411e/300x450',
+  'Chef\'s Table': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/a447e4b9-4a71-4406-b6e9-9b5daa39411e/300x450',
+  'Молчание ягнят': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/9c655ce1-2b59-4941-97aa-f9e928ed0ff4/300x450',
+  'Silence of the Lambs': 'https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/9c655ce1-2b59-4941-97aa-f9e928ed0ff4/300x450',
+  'Игра': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/d753a460-0ece-4007-84d9-02d7a2968829/300x450',
+  'The Game': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/d753a460-0ece-4007-84d9-02d7a2968829/300x450',
+  'Зодиак': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/0d57f736-f872-4494-ae80-f30d23a38aa0/300x450',
+  'Zodiac': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/0d57f736-f872-4494-ae80-f30d23a38aa0/300x450',
+  'Паровозик Томас': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/c55aaa44-732f-473c-a14e-fe648461f7ed/300x450',
+  'Thomas the Tank Engine': 'https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/c55aaa44-732f-473c-a14e-fe648461f7ed/300x450',
+  'Школа': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/f0c736cf-990c-442f-9a99-a98b5fb9093e/300x450',
+  'School': 'https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/f0c736cf-990c-442f-9a99-a98b5fb9093e/300x450'
+,
+  'ЦСКА — Спартак LIVE': 'https://ss.sport-express.ru/userfiles/materials/214/2147764/1180x665.jpg',
+  'ЦСКА — Спартак': 'https://ss.sport-express.ru/userfiles/materials/214/2147764/1180x665.jpg',
+  'КХЛ: СКА — ЦСКА': 'https://cdnn21.img.ria.ru/images/07e7/04/02/1862527226_0:0:3098:1743_1920x0_80_0_0_8ececa1fd387220cb772f210cd5d4017.jpg',
+  'Уимблдон 2025': 'https://ss.sport-express.ru/userfiles/materials/212/2120757/1180x665.jpg',
+  'Wimbledon 2025': 'https://ss.sport-express.ru/userfiles/materials/212/2120757/1180x665.jpg',
+  'Усик — Фьюри': 'https://avatars.mds.yandex.net/i?id=5e65e5dadc2de9c7a51a954cde7cc70d_l-10555711-images-thumbs&n=13',
+  'Usyk — Fury': 'https://avatars.mds.yandex.net/i?id=5e65e5dadc2de9c7a51a954cde7cc70d_l-10555711-images-thumbs&n=13',
+  'Формула 1 2024': 'https://pbs.twimg.com/media/GOhFL2aWsAAPXQK?format=jpg&name=large',
+  'Formula 1 2024': 'https://pbs.twimg.com/media/GOhFL2aWsAAPXQK?format=jpg&name=large',
+  'НБА Финал 2024': 'https://m.media-amazon.com/images/M/MV5BMzc0Y2U3ZTItYmY4Yi00NTYwLWI3NjUtYjI0ZTI0ZmZhMTdiXkEyXkFqcGc@._V1_.jpg',
+  'NBA Finals 2024': 'https://m.media-amazon.com/images/M/MV5BMzc0Y2U3ZTItYmY4Yi00NTYwLWI3NjUtYjI0ZTI0ZmZhMTdiXkEyXkFqcGc@._V1_.jpg',
+};
+
+// Color palettes for poster backgrounds
+const POSTER_COLORS = [
+  ['#1a0d2e','#3d1a6b','#6b35a0'],['#0d1a2e','#1a3d6b','#2563a0'],
+  ['#2e0d0d','#6b1a1a','#a03535'],['#0d2e1a','#1a6b3d','#35a063'],
+  ['#2e1a0d','#6b3d1a','#a06335'],['#1a2e2e','#1a6b6b','#35a0a0'],
+  ['#2e0d2e','#6b1a6b','#a035a0'],['#2e2e0d','#6b6b1a','#a0a035'],
+];
+
+function posterBg(title){
+  let h=0;
+  for(let i=0;i<title.length;i++) h=(h*31+title.charCodeAt(i))>>>0;
+  const c=POSTER_COLORS[h%POSTER_COLORS.length];
+  return `linear-gradient(160deg,${c[0]} 0%,${c[1]} 55%,${c[2]} 100%)`;
+}
+
+function makeCard(f,clickFn){
+  const title=ft(f.t),meta=ft(f.m);
+  const fid=f.id||'master';
+  const bg=posterBg(title);
+  const shortTitle=title.length>18?title.substring(0,16)+'…':title;
+  const poster=FILM_POSTERS[title]||FILM_POSTERS[f.t.ru]||FILM_POSTERS[f.t.en]||'';
+  const posterBlock=poster
+    ?'<img class="card-poster" referrerpolicy="no-referrer" src="'+poster+'" loading="lazy">'
+    :'<div class="card-poster-styled" style="background:'+bg+'"><div class="cps-icon">'+f.e+'</div><div class="cps-title">'+shortTitle+'</div></div>';
+  const clickAttr=clickFn
+    ?'onclick="'+clickFn+'"'
+    :'data-fid="'+fid+'" onclick="openFilm(this.dataset.fid)"';
+  return '<div class="movie-card" '+clickAttr+'>'
+    +posterBlock
+    +'<div class="card-info">'
+    +'<div class="card-title">'+title+'</div>'
+    +'<div class="card-meta">'+meta+'</div>'
+    +'<div class="card-rating">'+f.r+'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+// CATS
+function buildHomeCats(){
+  const c=document.getElementById('homeCats');if(!c)return;
+  c.innerHTML=CAT_KEYS.map(k=>`<button class="cat${_curCat===k?' active':''}" onclick="filterHome('${k}')">${L('cats')[k]||k}</button>`).join('');
+}
+function filterHome(key){_curCat=key;buildHomeCats();renderGenre(key);showToast('📂 '+ft(LANGS[LANG].cats[key]));}
+function renderGenre(key){
+  const films=FILMS_LIST[key]||FILMS_LIST.all;
+  const label=key==='all'?(LANG==='ru'?'Рекомендуем вам':'Recommended for You'):(L('cats')[key]||key);
+  const g=document.getElementById('genreContent');if(!g)return;
+  g.innerHTML=`<div class="section fade-in" style="overflow:visible"><div class="sec-header"><div class="sec-title">${label}</div><div class="see-all" onclick="go('s-catalog')">${L('all')}</div></div><div class="cards-row">${films.map(f=>makeCard(f)).join('')}</div></div>`;
+}
+function buildContinueRow(){
+  var r=document.getElementById('continueRow');if(!r)return;
+  var films=[FILMS_LIST.all[0],FILMS_LIST.all[1]];
+  var html='';
+  for(var k=0;k<films.length;k++){
+    var f=films[k];
+    var title=ft(f.t);
+    var poster=FILM_POSTERS[title]||FILM_POSTERS[f.t.ru]||FILM_POSTERS[f.t.en]||'';
+    var bg=posterBg(title);
+    var shortTitle=title.length>18?title.substring(0,16)+'…':title;
+    var fid=f.id||'master';
+    var imgEl=poster
+      ?'<img class="card-poster" referrerpolicy="no-referrer" src="'+poster+'" loading="lazy">'
+      :'<div class="card-poster-styled" style="background:'+bg+'"><div class="cps-icon">'+f.e+'</div><div class="cps-title">'+shortTitle+'</div></div>';
+    var meta=LANG==='ru'?'Осталось 1ч 18м':'1h 18m left';
+    html+='<div class="movie-card" data-fid="'+fid+'" onclick="openFilm(this.dataset.fid)">';
+    html+=imgEl;
+    html+='<div class="card-prog-wrap"><div class="card-prog-fill" style="width:35%"></div></div>';
+    html+='<div class="card-info"><div class="card-title">'+title+'</div><div class="card-meta">'+meta+'</div><div class="card-rating">'+f.r+'</div></div>';
+    html+='</div>';
+  }
+  r.innerHTML=html;
+}
+
+
+
+function buildCatalogFilters(){
+  const c=document.getElementById('catalogFilters');if(!c)return;
+  c.innerHTML=CATALOG_CAT_KEYS.map(k=>`<button class="cat${_curCatalogCat===k?' active':''}" onclick="filterCatalog('${k}')">${L('cats')[k]||k}</button>`).join('');
+}
+function filterCatalog(key){_curCatalogCat=key;buildCatalogFilters();renderCatalog(key);showToast('📂 '+ft(LANGS[LANG].cats[key]));}
+function renderCatalog(key){
+  const films=key==='all'?ALL_FILMS:(FILMS_LIST[key]||ALL_FILMS);
+  const g=document.getElementById('catalogGrid');if(!g)return;
+  g.innerHTML=films.map(f=>makeCard(f)).join('');
+}
+
+// SEARCH
+function buildSearchFchips(){
+  const c=document.getElementById('searchFchips');if(!c)return;
+  const keys=['all','films','series','animation','sport','new','docs'];
+  c.innerHTML=keys.map(k=>`<span class="fchip${_searchFilter===k?' active':''}" onclick="filterSearch('${k}')">${L('cats')[k]||k}</span>`).join('');
+}
+function renderSearch(q){
+  const query=q.toLowerCase().trim();
+  let base=_searchFilter==='all'?ALL_FILMS:(FILMS_LIST[_searchFilter]||ALL_FILMS);
+  const films=query?base.filter(f=>ft(f.t).toLowerCase().includes(query)||ft(f.m).toLowerCase().includes(query)):base;
+  const g=document.getElementById('searchResults');if(!g)return;
+  g.innerHTML=films.length?films.map(f=>makeCard(f)).join(''):`<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:.85rem;">${LANG==='ru'?'Ничего не найдено':'Nothing found'}</div>`;
+}
+function doSearch(v){renderSearch(v);}
+function filterSearch(key){_searchFilter=key;buildSearchFchips();renderSearch(document.getElementById('searchInput')?.value||'');showToast('🔎 '+ft(LANGS[LANG].cats[key]));}
+
+// VOICE
+let voiceOn=false;
+function toggleVoice(){
+  voiceOn=!voiceOn;const btn=document.getElementById('voiceBtn');
+  btn.classList.toggle('listening',voiceOn);btn.textContent=voiceOn?'🔴':'🎙';
+  showToast(voiceOn?(LANG==='ru'?'🎙 Говорите...':'🎙 Speak...'):(LANG==='ru'?'✓ Завершено':'✓ Done'));
+  if(voiceOn)setTimeout(()=>{voiceOn=false;btn.classList.remove('listening');btn.textContent='🎙';
+    const inp=document.getElementById('searchInput');if(inp){inp.value=LANG==='ru'?'Мастер и Маргарита':'The Master and Margarita';renderSearch(inp.value);}
+    showToast(LANG==='ru'?'✓ Найдено':'✓ Found');},2500);
+}
+
+// FILM PAGE
+function openFilm(filmId){
+  _curFilmId=filmId;
+  var f=FILM_DB[filmId]||FILM_DB.master;
+
+  // ── объявляем ВСЕ переменные первыми ──
+  var filmTitle=ft(f.title);
+  var filmBg=posterBg(filmTitle);
+  var filmPoster=FILM_POSTERS[filmTitle]||FILM_POSTERS[f.title.ru]||FILM_POSTERS[f.title.en]||'';
+
+  // ── poster wrap ──
+  var pw=document.getElementById('filmPosterWrap');
+  if(pw){
+    if(filmPoster){
+      pw.innerHTML='<div style="width:150px;border-radius:10px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.6);flex-shrink:0;">'
+        +'<img referrerpolicy="no-referrer" src="'+filmPoster+'" style="width:100%;display:block;"></div>';
+    } else {
+      pw.innerHTML='<div style="width:150px;aspect-ratio:2/3;border-radius:10px;background:'+filmBg+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;box-shadow:0 16px 40px rgba(0,0,0,.6);flex-shrink:0;overflow:hidden;">'
+        +'<div style="font-size:3.5rem;line-height:1;">'+(f.e||'🎬')+'</div>'
+        +'<div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.9);text-align:center;padding:0 12px;line-height:1.4;">'+filmTitle+'</div>'
+        +'</div>';
+    }
+  }
+
+  // ── navigate first ──
+  go('s-film');
+
+  // ── hero background ──
+  var bgEl=document.getElementById('filmHeroBg');
+  if(bgEl){
+    if(filmPoster){
+      bgEl.style.backgroundImage='url('+filmPoster+')';
+      bgEl.style.filter='blur(20px) brightness(.35)';
+      bgEl.style.transform='scale(1.1)';
+    } else {
+      bgEl.style.backgroundImage=filmBg;
+      bgEl.style.filter='brightness(.5)';
+    }
+  }
+
+  // ── fill text fields ──
+  safeSet('filmTitleEl', filmTitle);
+  var tags=(f.tags[LANG]||f.tags.ru).map(function(t){return '<span class="film-tag">'+t+'</span>';}).join('');
+  var fmr=document.getElementById('filmMetaRow');
+  if(fmr) fmr.innerHTML=tags+'<span class="film-rating-badge">★ '+f.rating+'</span><span class="film-tag">'+f.year+'</span><span class="film-tag">'+ft(f.duration)+'</span>';
+  safeSet('filmDescEl', ft(f.desc));
+  safeSet('filmFullDescEl', ft(f.fullDesc));
+  var det=f.details[LANG]||f.details.ru;
+  var fdel=document.getElementById('filmDetailsEl');
+  if(fdel) fdel.innerHTML=Object.keys(det).map(function(k){return '<span style="color:var(--muted)">'+k+'</span><span>'+det[k]+'</span>';}).join('');
+  var ag=document.getElementById('actorsGrid');
+  if(ag) ag.innerHTML=f.actors.map(function(a){return '<div class="actor-card"><div class="actor-avatar">'+a.icon+'</div><div class="actor-name">'+a.name+'</div><div class="actor-role">'+ft(a.role)+'</div></div>';}).join('');
+  renderReviews(f);
+  initWriteStars();
+  document.querySelectorAll('.film-tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
+  document.querySelectorAll('.film-tab-content').forEach(function(t,i){t.classList.toggle('active',i===0);});
+  safeSet('playerTitle', filmTitle);
+  // Update fav button state
+  var favBtn = document.getElementById('favBtn');
+  if(favBtn){
+    var inFav = isFavorite(filmId);
+    favBtn.textContent = inFav ? (LANG==='ru'?'❤️ В избранном':'❤️ In Watchlist') : (LANG==='ru'?'+ Избранное':'+ Watchlist');
+    favBtn.style.borderColor = inFav ? 'var(--red)' : '';
+    favBtn.style.color = inFav ? 'var(--red)' : '';
+  }
+}
+
+function switchTab(tab){
+  ['info','actors','reviews'].forEach((t,i)=>{
+    document.querySelectorAll('.film-tab')[i]?.classList.toggle('active',t===tab);
+    document.getElementById('tab-'+t)?.classList.toggle('active',t===tab);
+  });
+  // When switching to reviews, make sure stars are initialized
+  if(tab==='reviews'){
+    initWriteStars();
+  }
+}
+
+// REVIEWS
+const _extraRevs={};
+function renderReviews(f){
+  const el=document.getElementById('reviewsList');
+  if(!el) return;
+  const revs=[...f.reviews,...(_extraRevs[f.id]||[])];
+  if(!revs.length){el.innerHTML=`<div style="color:var(--muted);font-size:.82rem;padding:12px 0">${LANG==='ru'?'Отзывов пока нет.':'No reviews yet.'}</div>`;return;}
+  el.innerHTML=revs.map(r=>`<div class="review-card"><div class="review-header"><div class="review-avatar">${r.name[0]}</div><div class="review-name">${r.name}</div><div class="review-date">${r.date}</div></div><div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(10-r.stars)}</div><div class="review-text">${ft(r.text)}</div></div>`).join('');
+}
+let _writeRating=0;
+function initWriteStars(){
+  _writeRating=0;
+  const row=document.getElementById('writeStarRow');row.innerHTML='';
+  for(let i=1;i<=10;i++){const s=document.createElement('span');s.className='review-star';s.textContent='★';s.dataset.v=i;
+    s.onclick=()=>{_writeRating=i;document.querySelectorAll('.review-star').forEach((x,idx2)=>x.classList.toggle('on',idx2<i));};row.appendChild(s);}
+}
+function submitReview(){
+  const ta=document.getElementById('reviewText');
+  if(!ta){showToast('⚠️ Ошибка');return;}
+  const txt=ta.value.trim();
+  if(!txt){showToast(LANG==='ru'?'✏️ Напишите текст':'✏️ Write your review');return;}
+  if(!_extraRevs[_curFilmId])_extraRevs[_curFilmId]=[];
+  _extraRevs[_curFilmId].unshift({
+    name:LANG==='ru'?'Вы':'You',
+    date:new Date().toLocaleDateString('ru'),
+    stars:_writeRating||7,
+    text:{ru:txt,en:txt}
+  });
+  ta.value='';
+  _writeRating=0;
+  renderReviews(FILM_DB[_curFilmId]||FILM_DB.master);
+  // Re-init stars after clearing
+  initWriteStars();
+  showToast(LANG==='ru'?'✓ Отзыв опубликован!':'✓ Review published!');
+}
+
+// RATING MODAL
+const RATING_LABELS_KEY='rating_labels';
+let _curRating=0;
+function showRatingThenNext(){
+  const f=FILM_DB[_curFilmId]||FILM_DB.master;
+  safeSet('ratingFilmName', ft(f.title));
+  const rpw=document.getElementById('ratingPosterWrap');
+  if(rpw){
+    const rTitle=ft(f.title);
+    const rPoster=FILM_POSTERS[rTitle]||FILM_POSTERS[f.title.ru]||'';
+    const rBg=posterBg(rTitle);
+    rpw.innerHTML=rPoster
+      ?`<div style="width:64px;border-radius:7px;overflow:hidden;margin:0 auto 12px;"><img src="${rPoster}" style="width:100%;display:block;" onerror="this.parentElement.innerHTML='<div style=width:64px;aspect-ratio:2/3;border-radius:7px;background:'+rBg+';display:flex;align-items:center;justify-content:center;font-size:1.6rem>${f.e||'🎬'}</div>'"></div>`
+      :`<div style="width:64px;aspect-ratio:2/3;border-radius:7px;background:${rBg};display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 12px;">${f.e||'🎬'}</div>`;
+  }
+  _curRating=0;
+  safeSet('ratingNum','—');
+  safeSet('ratingLabel',L('rating_choose'));
+  const row=document.getElementById('starsRow');row.innerHTML='';
+  for(let i=1;i<=10;i++){const s=document.createElement('span');s.className='star-btn';s.textContent='★';
+    s.onmouseover=()=>{document.querySelectorAll('.star-btn').forEach((x,idx2)=>x.classList.toggle('lit',idx2<i));safeSet('ratingNum',i+'/10');safeSet('ratingLabel',LANGS[LANG].rating_labels[i]);};
+    s.onmouseout=()=>{document.querySelectorAll('.star-btn').forEach((x,idx2)=>x.classList.toggle('lit',idx2<_curRating));safeSet('ratingNum',_curRating||'—');safeSet('ratingLabel',_curRating?LANGS[LANG].rating_labels[_curRating]:L('rating_choose'));};
+    s.onclick=()=>{_curRating=i;document.querySelectorAll('.star-btn').forEach((x,idx2)=>x.classList.toggle('lit',idx2<i));safeSet('ratingNum',i+'/10');safeSet('ratingLabel',LANGS[LANG].rating_labels[i]);};
+    row.appendChild(s);}
+  const _rm2=document.getElementById('ratingModal'); if(_rm2) _rm2.style.display='flex';
+}
+function confirmRating(){
+  const rm=document.getElementById('ratingModal');
+  if(rm) rm.style.display='none';
+  showToast(_curRating?'⭐ '+_curRating+'/10':'✓');
+  go('s-recs');
+}
+function closeRating(){
+  const rm=document.getElementById('ratingModal');
+  if(rm) rm.style.display='none';
+  go('s-recs');
+}
+
+// QUALITY
+const QUALITIES=['480p SD','720p HD','1080p Full HD','1440p QHD','4K Ultra HD'];
+let _curQuality='1080p Full HD';
+function openQuality(){
+  safeSet('qualityTitle', L('quality_label'));
+  const qcl=document.getElementById('qualityClose'); if(qcl) qcl.textContent=LANG==='ru'?'Закрыть':'Close';
+  const _qo=document.getElementById('qualityOptions'); if(_qo) _qo.innerHTML=QUALITIES.map(q=>`<div class="quality-option${_curQuality===q?' active':''}" onclick="selectQuality('${q}')"><div class="quality-dot"></div><span>${q}</span></div>`).join('');
+  const _qm=document.getElementById('qualityModal'); if(_qm) _qm.style.display='flex';
+}
+function selectQuality(q){
+  _curQuality=q;
+  const _qv=document.getElementById('qualityVal'); if(_qv) _qv.textContent=q;
+  const _qo2=document.getElementById('qualityOptions'); if(_qo2) _qo2.innerHTML=QUALITIES.map(qi=>`<div class="quality-option${_curQuality===qi?' active':''}" onclick="selectQuality('${qi}')"><div class="quality-dot"></div><span>${qi}</span></div>`).join('');
+  showToast('✓ '+q);
+}
+
+// VOLUME
+function updateVol(v){
+  const vv=document.getElementById('volVal');
+  const vs=document.getElementById('volSettingVal');
+  if(vv) vv.textContent=v+'%';
+  if(vs) vs.textContent=v+'%';
+}
+
+// SETTINGS toggles
+function toggleSetting(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('on');
+  showToast(el.classList.contains('on')?L('enabled'):L('disabled'));
+}
+
+// HISTORY & FAVORITES
+function buildHistoryList(){
+  var el=document.getElementById('historyList');if(!el)return;
+  var items=[
+    {id:'master',e:'🎭',t:{ru:'Мастер и Маргарита',en:'The Master and Margarita'},meta:{ru:'2024 · Драма · вчера',en:'2024 · Drama · yesterday'},prog:35},
+    {id:'slovo',e:'⚔️',t:{ru:'Слово пацана',en:'Word of a Boy'},meta:{ru:'2023 · Серия 4 · 3 дня назад',en:'2023 · Episode 4 · 3 days ago'},prog:70},
+    {id:'dune',e:'🚀',t:{ru:'Дюна: Часть 2',en:'Dune: Part Two'},meta:{ru:'2024 · Просмотрено',en:'2024 · Watched'},prog:100},
+    {id:'sherlock',e:'🔍',t:{ru:'Шерлок',en:'Sherlock'},meta:{ru:'2010 · С1Э3 · неделю назад',en:'2010 · S1E3 · a week ago'},prog:42},
+  ];
+  var html='';
+  for(var k=0;k<items.length;k++){
+    var f=items[k];
+    var title=ft(f.t);
+    var poster=FILM_POSTERS[title]||FILM_POSTERS[f.t.ru]||FILM_POSTERS[f.t.en]||'';
+    var bg=posterBg(title);
+    var prog=f.prog;
+    var pcolor=prog===100?'var(--green)':'var(--accent)';
+    var ptext=prog===100?'✓':prog+'%';
+    var imgEl=poster
+      ?['<img style="width:40px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;" referrerpolicy="no-referrer" src="',poster,'" loading="lazy">'].join('')
+      :['<div style="width:40px;height:60px;border-radius:6px;background:',bg,';display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">',f.e,'</div>'].join('');
+    html+='<div class="history-item" data-fid="'+f.id+'" onclick="openFilm(this.dataset.fid)">';
+    html+=imgEl;
+    html+='<div class="history-info">';
+    html+='<div class="history-title">'+title+'</div>';
+    html+='<div class="history-meta">'+ft(f.meta)+'</div>';
+    html+='<div class="history-prog"><div class="history-prog-fill" style="width:'+prog+'%"></div></div>';
+    html+='</div>';
+    html+='<div style="font-size:.72rem;color:'+pcolor+';flex-shrink:0">'+ptext+'</div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+
+
+function buildFavGrid(){
+  const g=document.getElementById('favGrid');if(!g)return;
+  const favs=FILMS_LIST.all.slice(0,8);
+  g.innerHTML=favs.map(f=>makeCard(f)).join('');
+}
+function buildRecsRow(){
+  var r=document.getElementById('recsRow');if(!r)return;
+  var films=FILMS_LIST.drama.slice(0,5);
+  var html='';
+  for(var k=0;k<films.length;k++){
+    var f=films[k];
+    var title=ft(f.t);
+    var poster=FILM_POSTERS[title]||FILM_POSTERS[f.t.ru]||FILM_POSTERS[f.t.en]||'';
+    var bg=posterBg(title);
+    var st=title.length>14?title.substring(0,12)+'…':title;
+    var fid=f.id||'master';
+    var imgEl=poster
+      ?'<img style="width:100%;height:105px;object-fit:cover;display:block;" referrerpolicy="no-referrer" src="'+poster+'" loading="lazy">'
+      :'<div style="height:105px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;"><div style="font-size:2rem">'+f.e+'</div><div style="font-size:.58rem;color:rgba(255,255,255,.8);text-align:center;padding:0 8px;">'+st+'</div></div>';
+    var rec=LANG==='ru'?'Рекомендуем':'Recommended';
+    html+='<div class="rec-card" data-fid="'+fid+'" onclick="openFilm(this.dataset.fid)">';
+    html+=imgEl;
+    html+='<div class="rec-info"><div class="rec-title">'+title+'</div><div class="rec-meta">'+ft(f.m)+'</div><div class="rec-match">'+rec+'</div></div>';
+    html+='</div>';
+  }
+  r.innerHTML=html;
+}
+
+
+
+function togglePlay(){
+  playing=!playing;
+  const p=playing?PA:PP;
+  const ic=document.getElementById('playIconC');
+  const ict=document.getElementById('playIconCtrl');
+  if(ic) ic.innerHTML='<path d="'+p+'"/>';
+  if(ict) ict.innerHTML='<path d="'+p+'"/>';
+}
+function seekVid(e){
+  const r=e.currentTarget.getBoundingClientRect();
+  const pct=Math.round(((e.clientX-r.left)/r.width)*100);
+  const pb=document.getElementById('progBar');
+  const td=document.getElementById('timeD');
+  if(pb) pb.style.width=pct+'%';
+  if(td) td.textContent=Math.floor(121*pct/100)+':00 / 2:01:30';
+}
+
+// MISC
+function goGenre(cat){
+  go('s-catalog');
+  setTimeout(()=>{
+    let key='all';
+    if(cat==='Сериалы'||cat==='Series') key='series';
+    else if(cat==='Детям'||cat==='For Kids') key='kids';
+    else if(cat==='Спорт'||cat==='Sports') key='sport';
+    filterCatalog(key);
+  },200);
+}
+function loginOk(){closeOB(false);showToast(LANG==='ru'?'✓ Вы вошли!':'✓ Signed in!');setTimeout(()=>go('s-home'),600);}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  const txt=document.getElementById('toastTxt');
+  if(txt) txt.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.classList.remove('show'),2300);
+}
+
+// INIT
+buildHomeCats();renderGenre('all');buildContinueRow();buildCatalogFilters();renderCatalog('all');buildSearchFchips();renderSearch('');buildFavGrid();buildHistoryList();buildRecsRow();
+
+
+// ══ FAVORITES ══
+var _favorites = [];
+
+function toggleFavorite(filmId, filmTitle) {
+  var idx = _favorites.findIndex(function(f){ return f.id === filmId; });
+  if(idx >= 0) {
+    _favorites.splice(idx, 1);
+    showToast(LANG==='ru' ? '✓ Удалено из избранного' : '✓ Removed from Watchlist');
+  } else {
+    _favorites.push({id: filmId, title: filmTitle});
+    showToast(LANG==='ru' ? '❤️ Добавлено в избранное' : '❤️ Added to Watchlist');
+  }
+  var fc = document.getElementById('favCount');
+  if(fc) fc.textContent = _favorites.length + (LANG==='ru' ? ' сохранённых' : ' saved');
+}
+
+function isFavorite(filmId) {
+  return _favorites.some(function(f){ return f.id === filmId; });
+}
+
+
+function toggleFavFromFilm(){
+  var f = FILM_DB[_curFilmId]||FILM_DB.master;
+  toggleFavorite(_curFilmId, (f.title && f.title[LANG]) || _curFilmId);
+  var btn = document.getElementById('favBtn');
+  if(btn){
+    var inFav = isFavorite(_curFilmId);
+    btn.textContent = inFav ? (LANG==='ru'?'❤️ В избранном':'❤️ In Watchlist') : (LANG==='ru'?'+ Избранное':'+ Watchlist');
+    btn.style.borderColor = inFav ? 'var(--red)' : '';
+    btn.style.color = inFav ? 'var(--red)' : '';
+  }
+}
+
+
+function openSportLive(sportId, title) {
+  _curFilmId = sportId || 'cskasp';
+  var pt = document.getElementById('playerTitle');
+  if(pt) pt.textContent = title || (LANG==='ru' ? 'ЦСКА — Спартак · LIVE' : 'CSKA — Spartak · LIVE');
+  go('s-player');
+}
+
+function closeQualityModal(){
+  const m=document.getElementById('qualityModal');
+  if(m) m.style.display='none';
+}
+function closeVolumeModal(){
+  const m=document.getElementById('volumeModal');
+  if(m) m.style.display='none';
+}
+function openVolumeModal(){
+  const m=document.getElementById('volumeModal');
+  if(m) m.style.display='flex';
+}
+
+// ══ FAVORITES ══
+var _favorites = [];
+
+function toggleFavorite(filmId, filmTitle) {
+  var idx = _favorites.findIndex(function(f){ return f.id === filmId; });
+  if(idx >= 0) {
+    _favorites.splice(idx, 1);
+    showToast(LANG==='ru' ? '✓ Удалено из избранного' : '✓ Removed from Watchlist');
+  } else {
+    _favorites.push({id: filmId, title: filmTitle});
+    showToast(LANG==='ru' ? '❤️ Добавлено в избранное' : '❤️ Added to Watchlist');
+  }
+  var fc = document.getElementById('favCount');
+  if(fc) fc.textContent = _favorites.length + (LANG==='ru' ? ' сохранённых' : ' saved');
+}
+
+function isFavorite(filmId) {
+  return _favorites.some(function(f){ return f.id === filmId; });
+}
+
+function toggleFavFromFilm(){
+  var f = FILM_DB[_curFilmId]||FILM_DB.master;
+  toggleFavorite(_curFilmId, (f.title && f.title[LANG]) || _curFilmId);
+  var btn = document.getElementById('favBtn');
+  if(btn){
+    var inFav = isFavorite(_curFilmId);
+    btn.textContent = inFav ? (LANG==='ru'?'❤️ В избранном':'❤️ In Watchlist') : (LANG==='ru'?'+ Избранное':'+ Watchlist');
+    btn.style.borderColor = inFav ? 'var(--red)' : '';
+    btn.style.color = inFav ? 'var(--red)' : '';
+  }
+}
+
+function openSportLive(sportId, title) {
+  _curFilmId = sportId || 'cskasp';
+  var pt = document.getElementById('playerTitle');
+  if(pt) pt.textContent = title || (LANG==='ru' ? 'ЦСКА — Спартак · LIVE' : 'CSKA — Spartak · LIVE');
+  go('s-player');
+}
+</script>
+</body>
+</html>
